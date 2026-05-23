@@ -155,6 +155,58 @@ __global__ void convolution_shared_constant_filter_kernel(const float* input,
     output[y * width + x] = sum;
 }
 
+__global__ void convolution_separable_horizontal_kernel(const float* input,
+                                                        float* intermediate,
+                                                        int width,
+                                                        int height,
+                                                        const float* filter_1d,
+                                                        int filter_size) {
+    const int x = blockIdx.x * blockDim.x + threadIdx.x;
+    const int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (x >= width || y >= height) {
+        return;
+    }
+
+    const int radius = filter_size / 2;
+    float sum = 0.0f;
+
+    for (int fx = 0; fx < filter_size; ++fx) {
+        const int image_x = x + fx - radius;
+        if (image_x >= 0 && image_x < width) {
+            sum += input[y * width + image_x] * filter_1d[fx];
+        }
+    }
+
+    intermediate[y * width + x] = sum;
+}
+
+__global__ void convolution_separable_vertical_kernel(const float* intermediate,
+                                                      float* output,
+                                                      int width,
+                                                      int height,
+                                                      const float* filter_1d,
+                                                      int filter_size) {
+    const int x = blockIdx.x * blockDim.x + threadIdx.x;
+    const int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (x >= width || y >= height) {
+        return;
+    }
+
+    const int radius = filter_size / 2;
+    float sum = 0.0f;
+
+    for (int fy = 0; fy < filter_size; ++fy) {
+        const int image_y = y + fy - radius;
+        if (image_y >= 0 && image_y < height) {
+            sum += intermediate[image_y * width + x] * filter_1d[fy];
+        }
+    }
+
+    output[y * width + x] = sum;
+}
+
 void launch_kernel(KernelKind kind,
                    const float* d_input,
                    float* d_output,
@@ -273,6 +325,23 @@ void run_convolution(KernelKind kind,
         total_stop - total_start).count();
 }
 
+void launch_separable_kernels(const float* d_input,
+                              float* d_intermediate,
+                              float* d_output,
+                              int width,
+                              int height,
+                              const float* d_filter_1d,
+                              int filter_size) {
+    const dim3 block(kBlockSizeX, kBlockSizeY);
+    const dim3 grid((width + block.x - 1) / block.x,
+                    (height + block.y - 1) / block.y);
+
+    convolution_separable_horizontal_kernel<<<grid, block>>>(
+        d_input, d_intermediate, width, height, d_filter_1d, filter_size);
+    convolution_separable_vertical_kernel<<<grid, block>>>(
+        d_intermediate, d_output, width, height, d_filter_1d, filter_size);
+}
+
 }  // namespace
 
 void convolution_cuda_naive(const std::vector<float>& input,
@@ -336,6 +405,80 @@ void convolution_cuda_shared_constant_filter(const std::vector<float>& input,
                     warmup_count,
                     repeat_count,
                     timing);
+}
+
+void convolution_cuda_separable(const std::vector<float>& input,
+                                std::vector<float>& output,
+                                int width,
+                                int height,
+                                int filter_size,
+                                int warmup_count,
+                                int repeat_count,
+                                CudaTiming& timing) {
+    if (width <= 0 || height <= 0 || filter_size <= 0 || filter_size % 2 == 0) {
+        throw std::invalid_argument("Image dimensions must be positive and filter size must be odd.");
+    }
+    if (input.size() != static_cast<size_t>(width * height)) {
+        throw std::invalid_argument("Input image size does not match width * height.");
+    }
+
+    output.assign(static_cast<size_t>(width * height), 0.0f);
+    timing = {};
+    warmup_count = std::max(warmup_count, 0);
+    repeat_count = std::max(repeat_count, 1);
+
+    const size_t image_bytes = input.size() * sizeof(float);
+    const size_t filter_bytes = static_cast<size_t>(filter_size) * sizeof(float);
+    const std::vector<float> filter_1d(static_cast<size_t>(filter_size),
+                                       1.0f / static_cast<float>(filter_size));
+
+    float* d_input = nullptr;
+    float* d_intermediate = nullptr;
+    float* d_output = nullptr;
+    float* d_filter_1d = nullptr;
+    cudaEvent_t start = nullptr;
+    cudaEvent_t stop = nullptr;
+
+    const auto total_start = std::chrono::high_resolution_clock::now();
+
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_input), image_bytes));
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_intermediate), image_bytes));
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_output), image_bytes));
+    CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_filter_1d), filter_bytes));
+
+    CUDA_CHECK(cudaMemcpy(d_input, input.data(), image_bytes, cudaMemcpyHostToDevice));
+    CUDA_CHECK(cudaMemcpy(d_filter_1d, filter_1d.data(), filter_bytes, cudaMemcpyHostToDevice));
+
+    for (int warmup = 0; warmup < warmup_count; ++warmup) {
+        launch_separable_kernels(d_input, d_intermediate, d_output, width, height, d_filter_1d, filter_size);
+        CUDA_CHECK(cudaGetLastError());
+    }
+    CUDA_CHECK(cudaDeviceSynchronize());
+
+    CUDA_CHECK(cudaEventCreate(&start));
+    CUDA_CHECK(cudaEventCreate(&stop));
+    CUDA_CHECK(cudaEventRecord(start));
+    for (int repeat = 0; repeat < repeat_count; ++repeat) {
+        launch_separable_kernels(d_input, d_intermediate, d_output, width, height, d_filter_1d, filter_size);
+        CUDA_CHECK(cudaGetLastError());
+    }
+    CUDA_CHECK(cudaEventRecord(stop));
+    CUDA_CHECK(cudaEventSynchronize(stop));
+    CUDA_CHECK(cudaEventElapsedTime(&timing.kernel_time_ms, start, stop));
+    timing.kernel_time_ms /= static_cast<float>(repeat_count);
+
+    CUDA_CHECK(cudaMemcpy(output.data(), d_output, image_bytes, cudaMemcpyDeviceToHost));
+
+    CUDA_CHECK(cudaEventDestroy(start));
+    CUDA_CHECK(cudaEventDestroy(stop));
+    CUDA_CHECK(cudaFree(d_filter_1d));
+    CUDA_CHECK(cudaFree(d_output));
+    CUDA_CHECK(cudaFree(d_intermediate));
+    CUDA_CHECK(cudaFree(d_input));
+
+    const auto total_stop = std::chrono::high_resolution_clock::now();
+    timing.total_time_ms = std::chrono::duration<double, std::milli>(
+        total_stop - total_start).count();
 }
 
 std::string get_cuda_device_name() {

@@ -242,6 +242,34 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {
             results.push_back(result);
             print_result(result);
         }
+
+        if (has_version_alias(requested_versions, "separable", "cuda_separable")) {
+            std::vector<float> gpu_output;
+            CudaTiming gpu_timing;
+            convolution_cuda_separable(input,
+                                       gpu_output,
+                                       benchmark_case.image_width,
+                                       benchmark_case.image_height,
+                                       benchmark_case.filter_size,
+                                       options.warmup_count,
+                                       options.repeat_count,
+                                       gpu_timing);
+
+            const CorrectnessMetrics correctness = compare_outputs(
+                cpu_output,
+                gpu_output,
+                kCorrectnessTolerance);
+
+            BenchmarkResult result = make_result(benchmark_case,
+                                                 "cuda_separable",
+                                                 device_name,
+                                                 options.repeat_count,
+                                                 cpu_time_ms,
+                                                 gpu_timing,
+                                                 correctness);
+            results.push_back(result);
+            print_result(result);
+        }
     }
 
     return results;

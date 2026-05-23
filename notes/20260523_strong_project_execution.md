@@ -183,3 +183,35 @@ How to run this comparison:
 Next step:
 
 Add separable convolution for filters that can be represented as two 1D passes.
+
+### 7. Added Separable CUDA Convolution
+
+Added version:
+
+```text
+cuda_separable
+```
+
+Important assumption:
+
+The current generated 2D filter is a normalized box filter. A box filter is separable, because a `k x k` average is equivalent to a horizontal `k`-element average followed by a vertical `k`-element average.
+
+Kernel idea:
+
+- First CUDA kernel computes horizontal 1D convolution into an intermediate image.
+- Second CUDA kernel computes vertical 1D convolution from the intermediate image into the final output.
+- The arithmetic cost drops from `k*k` multiply-adds per pixel to `2*k` multiply-adds per pixel.
+
+Why this matters:
+
+This gives the project an algorithmic optimization in addition to memory-hierarchy optimizations. For larger filters such as 11x11, separable convolution should be a strong performance result if the filter is separable.
+
+How to run all implemented versions:
+
+```powershell
+.\scripts\run_benchmarks.ps1 -ImageSizes "512,1024,2048" -FilterSizes "3,5,7,11" -Repeats 5 -Warmups 1 -Versions "all"
+```
+
+Next step:
+
+Add result plotting scripts and update final documentation so the repository is report-ready.

@@ -48,4 +48,13 @@ void convolution_cuda_shared_constant_filter(const std::vector<float>& input,
                                              int repeat_count,
                                              CudaTiming& timing);
 
+void convolution_cuda_separable(const std::vector<float>& input,
+                                std::vector<float>& output,
+                                int width,
+                                int height,
+                                int filter_size,
+                                int warmup_count,
+                                int repeat_count,
+                                CudaTiming& timing);
+
 std::string get_cuda_device_name();
