@@ -215,3 +215,32 @@ How to run all implemented versions:
 Next step:
 
 Add result plotting scripts and update final documentation so the repository is report-ready.
+
+### 8. Added Plotting And Report-Ready Notes
+
+Added:
+
+- `scripts/plot_results.py`
+- `results/plots/.gitkeep`
+- `docs/ImplementationNotes.md`
+
+Plot script outputs:
+
+- `speedup_by_version.png`
+- `time_by_image_size_3x3.png`
+- `speedup_by_filter_size_1024.png`
+- `kernel_vs_total_time.png`
+
+Command:
+
+```powershell
+python .\scripts\plot_results.py --input results\timing_results.csv --output-dir results\plots
+```
+
+Interpretation:
+
+The project now has the full implementation skeleton for source code, benchmark data, generated graphs, and report notes. Real graph images should be generated only after running benchmarks on the actual CUDA machine.
+
+Next step:
+
+Run validation commands available in this environment, document tool limitations, and commit the documentation/plotting milestone.

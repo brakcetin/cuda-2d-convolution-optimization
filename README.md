@@ -10,19 +10,21 @@ This repository is for the CENG-479 Parallel Programming final project:
 
 The project studies how a sequential 2D grayscale image convolution baseline compares with progressively optimized CUDA implementations. This first milestone establishes the correctness and benchmark pipeline using a CPU baseline and a naive global-memory CUDA kernel.
 
-The current implementation intentionally starts with the standard CUDA baseline: one CUDA thread computes one output pixel, reading image pixels and filter coefficients directly from global memory. NVIDIA's CUDA programming model and sample convolution material use the same grid/block execution model as the foundation before introducing shared memory, constant memory, and separable filters. This keeps the first version correct, readable, and suitable for later memory-hierarchy experiments.
+The implementation starts with the standard CUDA baseline: one CUDA thread computes one output pixel. It then adds memory-hierarchy-aware and algorithmic optimizations so the final report can compare how each design changes performance.
 
 ## Implemented Versions
 
 - `cpu_sequential`: single-threaded CPU reference implementation.
 - `cuda_naive_global_memory`: one CUDA thread per output pixel, 16x16 thread blocks, global-memory image/filter reads.
+- `cuda_shared_memory_tiled`: input tile plus halo loaded into dynamic shared memory.
+- `cuda_shared_constant_filter`: shared-memory input tile with filter coefficients stored in CUDA constant memory.
+- `cuda_separable`: horizontal and vertical 1D passes for the generated separable box filter.
 
-Planned next versions:
+Planned next work:
 
-- Shared-memory tiled CUDA convolution.
-- Constant-memory filter coefficients.
-- Separable convolution for applicable filters.
-- Larger benchmark matrix and graphs for the final report.
+- Run full benchmark matrix on the final CUDA machine.
+- Generate final graphs from measured CSV files.
+- Add final report and presentation result summaries.
 
 ## Technologies Used
 
@@ -100,6 +102,12 @@ Helper scripts are available under `scripts/`:
 .\scripts\run_benchmarks.ps1 -ImageSizes "512,1024,2048" -FilterSizes "3,5,7,11" -Repeats 5 -Warmups 1 -Versions "all"
 ```
 
+Generate plots after benchmark CSV files are populated:
+
+```powershell
+python .\scripts\plot_results.py --input results\timing_results.csv --output-dir results\plots
+```
+
 ## Benchmark Parameters
 
 Current image sizes:
@@ -140,6 +148,7 @@ Files:
 
 - `results/timing_results.csv`
 - `results/correctness_results.csv`
+- `results/plots/`
 
 ## Current Implementation Status
 
@@ -152,11 +161,15 @@ Completed:
 - Synthetic image/filter generation.
 - Correctness comparison with max and mean absolute error.
 - Configurable benchmark runner with repeat/warm-up counts and selectable versions.
+- Shared-memory tiled CUDA implementation.
+- Constant-memory filter CUDA implementation.
+- Separable CUDA implementation for normalized box filters.
+- Plot generation script for benchmark graphs.
 - CSV result generation.
 
 Limitations:
 
 - No OpenCV or image file loading yet.
-- GPU timing is kernel-only; host-device transfer timing will be added in a later milestone.
-- Only 512x512 and 1024x1024 images with 3x3 and 5x5 filters are benchmarked in this first milestone.
-- Shared memory, constant memory, separable convolution, profiling metrics, and graphs are planned next.
+- Real benchmark values still need to be collected on a CUDA machine.
+- 4096x4096 should be used only after smoke testing confirms runtime and memory are practical.
+- Profiling metrics from Nsight tools are not collected automatically yet.
