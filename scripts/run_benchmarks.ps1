@@ -1,6 +1,3 @@
-Set-StrictMode -Version Latest
-$ErrorActionPreference = "Stop"
-
 param(
     [string]$ImageSizes = "512,1024,2048",
     [string]$FilterSizes = "3,5,7,11",
@@ -8,6 +5,9 @@ param(
     [int]$Warmups = 1,
     [string]$Versions = "all"
 )
+
+Set-StrictMode -Version Latest
+$ErrorActionPreference = "Stop"
 
 $RepoRoot = Resolve-Path "$PSScriptRoot\.."
 Set-Location $RepoRoot

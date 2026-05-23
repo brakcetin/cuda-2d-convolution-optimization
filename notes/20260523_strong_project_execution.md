@@ -244,3 +244,48 @@ The project now has the full implementation skeleton for source code, benchmark 
 Next step:
 
 Run validation commands available in this environment, document tool limitations, and commit the documentation/plotting milestone.
+
+### 9. Script Validation Fix
+
+Fixed `scripts/run_benchmarks.ps1` so the `param(...)` block appears before executable PowerShell statements.
+
+Why:
+
+PowerShell scripts should declare parameters before `Set-StrictMode` and other executable statements. This keeps the benchmark runner script callable with named parameters such as `-ImageSizes`, `-FilterSizes`, and `-Versions`.
+
+Validation:
+
+```powershell
+python scripts\plot_results.py --help
+```
+
+Result:
+
+- Plot script argument parsing works.
+
+PowerShell scripts were parsed with `System.Management.Automation.PSParser`.
+
+Result:
+
+- `check_environment.ps1`: syntax OK.
+- `configure_release.ps1`: syntax OK.
+- `build_release.ps1`: syntax OK.
+- `run_benchmarks.ps1`: syntax OK after moving `param(...)`.
+
+Environment check:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\check_environment.ps1
+```
+
+Observed:
+
+- `nvidia-smi` exists.
+- GPU visible: NVIDIA GeForce GTX 1650.
+- Driver reports CUDA Version 13.0 support.
+- `cmake` is missing from PATH.
+- `nvcc` is missing from PATH.
+
+Interpretation:
+
+The machine has an NVIDIA driver and GPU visibility, but the build toolchain is not configured. Install CMake and CUDA Toolkit, or add them to PATH, before compiling and collecting final benchmark CSVs.
