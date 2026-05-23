@@ -10,8 +10,6 @@
 
 namespace {
 
-constexpr int kBlockSizeX = 16;
-constexpr int kBlockSizeY = 16;
 constexpr int kMaxConstantFilterElements = 11 * 11;
 
 __constant__ float c_filter[kMaxConstantFilterElements];
@@ -243,8 +241,10 @@ void launch_kernel(KernelKind kind,
                    int width,
                    int height,
                    const float* d_filter,
-                   int filter_size) {
-    const dim3 block(kBlockSizeX, kBlockSizeY);
+                   int filter_size,
+                   int block_width,
+                   int block_height) {
+    const dim3 block(block_width, block_height);
     const dim3 grid((width + block.x - 1) / block.x,
                     (height + block.y - 1) / block.y);
 
@@ -280,11 +280,16 @@ void run_convolution(KernelKind kind,
                      int height,
                      const std::vector<float>& filter,
                      int filter_size,
+                     int block_width,
+                     int block_height,
                      int warmup_count,
                      int repeat_count,
                      CudaTiming& timing) {
     if (width <= 0 || height <= 0 || filter_size <= 0 || filter_size % 2 == 0) {
         throw std::invalid_argument("Image dimensions must be positive and filter size must be odd.");
+    }
+    if (block_width <= 0 || block_height <= 0 || block_width * block_height > 1024) {
+        throw std::invalid_argument("Block dimensions must be positive and contain at most 1024 threads.");
     }
     if (input.size() != static_cast<size_t>(width * height)) {
         throw std::invalid_argument("Input image size does not match width * height.");
@@ -329,7 +334,7 @@ void run_convolution(KernelKind kind,
     timing.host_to_device_time_ms = elapsed_ms(phase_start, phase_stop);
 
     for (int warmup = 0; warmup < warmup_count; ++warmup) {
-        launch_kernel(kind, d_input, d_output, width, height, d_filter, filter_size);
+        launch_kernel(kind, d_input, d_output, width, height, d_filter, filter_size, block_width, block_height);
         CUDA_CHECK(cudaGetLastError());
     }
     CUDA_CHECK(cudaDeviceSynchronize());
@@ -340,7 +345,7 @@ void run_convolution(KernelKind kind,
     kernel_samples.reserve(static_cast<size_t>(repeat_count));
     for (int repeat = 0; repeat < repeat_count; ++repeat) {
         CUDA_CHECK(cudaEventRecord(start));
-        launch_kernel(kind, d_input, d_output, width, height, d_filter, filter_size);
+        launch_kernel(kind, d_input, d_output, width, height, d_filter, filter_size, block_width, block_height);
         CUDA_CHECK(cudaGetLastError());
         CUDA_CHECK(cudaEventRecord(stop));
         CUDA_CHECK(cudaEventSynchronize(stop));
@@ -387,8 +392,10 @@ void launch_separable_kernels(const float* d_input,
                               int width,
                               int height,
                               const float* d_filter_1d,
-                              int filter_size) {
-    const dim3 block(kBlockSizeX, kBlockSizeY);
+                              int filter_size,
+                              int block_width,
+                              int block_height) {
+    const dim3 block(block_width, block_height);
     const dim3 grid((width + block.x - 1) / block.x,
                     (height + block.y - 1) / block.y);
 
@@ -406,6 +413,8 @@ void convolution_cuda_naive(const std::vector<float>& input,
                             int height,
                             const std::vector<float>& filter,
                             int filter_size,
+                            int block_width,
+                            int block_height,
                             int warmup_count,
                             int repeat_count,
                             CudaTiming& timing) {
@@ -416,6 +425,8 @@ void convolution_cuda_naive(const std::vector<float>& input,
                     height,
                     filter,
                     filter_size,
+                    block_width,
+                    block_height,
                     warmup_count,
                     repeat_count,
                     timing);
@@ -427,6 +438,8 @@ void convolution_cuda_shared_memory_tiled(const std::vector<float>& input,
                                           int height,
                                           const std::vector<float>& filter,
                                           int filter_size,
+                                          int block_width,
+                                          int block_height,
                                           int warmup_count,
                                           int repeat_count,
                                           CudaTiming& timing) {
@@ -437,6 +450,8 @@ void convolution_cuda_shared_memory_tiled(const std::vector<float>& input,
                     height,
                     filter,
                     filter_size,
+                    block_width,
+                    block_height,
                     warmup_count,
                     repeat_count,
                     timing);
@@ -448,6 +463,8 @@ void convolution_cuda_shared_constant_filter(const std::vector<float>& input,
                                              int height,
                                              const std::vector<float>& filter,
                                              int filter_size,
+                                             int block_width,
+                                             int block_height,
                                              int warmup_count,
                                              int repeat_count,
                                              CudaTiming& timing) {
@@ -458,6 +475,8 @@ void convolution_cuda_shared_constant_filter(const std::vector<float>& input,
                     height,
                     filter,
                     filter_size,
+                    block_width,
+                    block_height,
                     warmup_count,
                     repeat_count,
                     timing);
@@ -469,11 +488,16 @@ void convolution_cuda_separable(const std::vector<float>& input,
                                 int height,
                                 const std::vector<float>& filter_1d,
                                 int filter_size,
+                                int block_width,
+                                int block_height,
                                 int warmup_count,
                                 int repeat_count,
                                 CudaTiming& timing) {
     if (width <= 0 || height <= 0 || filter_size <= 0 || filter_size % 2 == 0) {
         throw std::invalid_argument("Image dimensions must be positive and filter size must be odd.");
+    }
+    if (block_width <= 0 || block_height <= 0 || block_width * block_height > 1024) {
+        throw std::invalid_argument("Block dimensions must be positive and contain at most 1024 threads.");
     }
     if (input.size() != static_cast<size_t>(width * height)) {
         throw std::invalid_argument("Input image size does not match width * height.");
@@ -512,7 +536,7 @@ void convolution_cuda_separable(const std::vector<float>& input,
     timing.host_to_device_time_ms = elapsed_ms(phase_start, phase_stop);
 
     for (int warmup = 0; warmup < warmup_count; ++warmup) {
-        launch_separable_kernels(d_input, d_intermediate, d_output, width, height, d_filter_1d, filter_size);
+        launch_separable_kernels(d_input, d_intermediate, d_output, width, height, d_filter_1d, filter_size, block_width, block_height);
         CUDA_CHECK(cudaGetLastError());
     }
     CUDA_CHECK(cudaDeviceSynchronize());
@@ -523,7 +547,7 @@ void convolution_cuda_separable(const std::vector<float>& input,
     kernel_samples.reserve(static_cast<size_t>(repeat_count));
     for (int repeat = 0; repeat < repeat_count; ++repeat) {
         CUDA_CHECK(cudaEventRecord(start));
-        launch_separable_kernels(d_input, d_intermediate, d_output, width, height, d_filter_1d, filter_size);
+        launch_separable_kernels(d_input, d_intermediate, d_output, width, height, d_filter_1d, filter_size, block_width, block_height);
         CUDA_CHECK(cudaGetLastError());
         CUDA_CHECK(cudaEventRecord(stop));
         CUDA_CHECK(cudaEventSynchronize(stop));

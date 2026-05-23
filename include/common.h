@@ -25,6 +25,11 @@ struct BenchmarkCase {
     std::string filter_type;
 };
 
+struct BlockSize {
+    int width = 16;
+    int height = 16;
+};
+
 struct BenchmarkResult {
     int image_width = 0;
     int image_height = 0;
@@ -32,6 +37,8 @@ struct BenchmarkResult {
     std::string filter_type;
     std::string version;
     std::string device_name;
+    int block_width = 16;
+    int block_height = 16;
     int repeat_count = 0;
     std::uint64_t estimated_operations = 0;
     double cpu_time_ms = 0.0;

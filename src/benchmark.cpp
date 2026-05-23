@@ -69,6 +69,7 @@ double calculate_gflops(std::uint64_t operations, double time_ms) {
 BenchmarkResult make_result(const BenchmarkCase& benchmark_case,
                             const std::string& version,
                             const std::string& device_name,
+                            const BlockSize& block_size,
                             int repeat_count,
                             const TimingStats& cpu_stats,
                             const CudaTiming& gpu_timing,
@@ -80,6 +81,8 @@ BenchmarkResult make_result(const BenchmarkCase& benchmark_case,
     result.filter_type = benchmark_case.filter_type;
     result.version = version;
     result.device_name = device_name;
+    result.block_width = block_size.width;
+    result.block_height = block_size.height;
     result.repeat_count = repeat_count;
     result.estimated_operations = estimate_operation_count(benchmark_case, version);
     result.cpu_time_ms = cpu_stats.average_ms;
@@ -119,6 +122,8 @@ void print_result(const BenchmarkResult& result) {
               << ", filter " << result.filter_size << "x"
               << result.filter_size
               << " " << result.filter_type
+              << ", block " << result.block_width << "x"
+              << result.block_height
               << ", version " << result.version
               << ": CPU avg " << result.cpu_time_ms << " ms (stddev "
               << result.cpu_stddev_time_ms << "), CUDA kernel avg "
@@ -203,7 +208,7 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {
     const std::string device_name = get_cuda_device_name();
 
     std::vector<BenchmarkResult> results;
-    results.reserve(cases.size() * 4);
+    results.reserve(cases.size() * options.block_sizes.size() * 4);
 
     for (const BenchmarkCase& benchmark_case : cases) {
         const unsigned int seed = static_cast<unsigned int>(
@@ -227,129 +232,146 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {
                                                       benchmark_case.filter_size,
                                                       options.repeat_count);
 
-        if (has_version_alias(requested_versions, "naive", "cuda_naive_global_memory")) {
-            std::vector<float> gpu_output;
-            CudaTiming gpu_timing;
-            convolution_cuda_naive(input,
-                                   gpu_output,
-                                   benchmark_case.image_width,
-                                   benchmark_case.image_height,
-                                   filter_spec.filter_2d,
-                                   benchmark_case.filter_size,
-                                   options.warmup_count,
-                                   options.repeat_count,
-                                   gpu_timing);
-
-            const CorrectnessMetrics correctness = compare_outputs(
-                cpu_output,
-                gpu_output,
-                kCorrectnessTolerance);
-
-            BenchmarkResult result = make_result(benchmark_case,
-                                                 "cuda_naive_global_memory",
-                                                 device_name,
-                                                 options.repeat_count,
-                                                 cpu_stats,
-                                                 gpu_timing,
-                                                 correctness);
-            results.push_back(result);
-            print_result(result);
-        }
-
-        if (has_version_alias(requested_versions, "shared", "cuda_shared_memory_tiled")) {
-            std::vector<float> gpu_output;
-            CudaTiming gpu_timing;
-            convolution_cuda_shared_memory_tiled(input,
-                                                 gpu_output,
-                                                 benchmark_case.image_width,
-                                                 benchmark_case.image_height,
-                                                 filter_spec.filter_2d,
-                                                 benchmark_case.filter_size,
-                                                 options.warmup_count,
-                                                 options.repeat_count,
-                                                 gpu_timing);
-
-            const CorrectnessMetrics correctness = compare_outputs(
-                cpu_output,
-                gpu_output,
-                kCorrectnessTolerance);
-
-            BenchmarkResult result = make_result(benchmark_case,
-                                                 "cuda_shared_memory_tiled",
-                                                 device_name,
-                                                 options.repeat_count,
-                                                 cpu_stats,
-                                                 gpu_timing,
-                                                 correctness);
-            results.push_back(result);
-            print_result(result);
-        }
-
-        if (has_version_alias(requested_versions, "constant", "cuda_shared_constant_filter")) {
-            std::vector<float> gpu_output;
-            CudaTiming gpu_timing;
-            convolution_cuda_shared_constant_filter(input,
-                                                    gpu_output,
-                                                    benchmark_case.image_width,
-                                                    benchmark_case.image_height,
-                                                    filter_spec.filter_2d,
-                                                    benchmark_case.filter_size,
-                                                    options.warmup_count,
-                                                    options.repeat_count,
-                                                    gpu_timing);
-
-            const CorrectnessMetrics correctness = compare_outputs(
-                cpu_output,
-                gpu_output,
-                kCorrectnessTolerance);
-
-            BenchmarkResult result = make_result(benchmark_case,
-                                                 "cuda_shared_constant_filter",
-                                                 device_name,
-                                                 options.repeat_count,
-                                                 cpu_stats,
-                                                 gpu_timing,
-                                                 correctness);
-            results.push_back(result);
-            print_result(result);
-        }
-
-        if (filter_spec.separable &&
-            has_version_alias(requested_versions, "separable", "cuda_separable")) {
-            std::vector<float> cpu_separable_output;
+        const bool run_separable = filter_spec.separable &&
+                                   has_version_alias(requested_versions, "separable", "cuda_separable");
+        std::vector<float> cpu_separable_output;
+        if (run_separable) {
             convolution_cpu_separable(input,
                                       cpu_separable_output,
                                       benchmark_case.image_width,
                                       benchmark_case.image_height,
                                       filter_spec.filter_1d,
                                       benchmark_case.filter_size);
+        }
 
-            std::vector<float> gpu_output;
-            CudaTiming gpu_timing;
-            convolution_cuda_separable(input,
+        for (const BlockSize& block_size : options.block_sizes) {
+            if (has_version_alias(requested_versions, "naive", "cuda_naive_global_memory")) {
+                std::vector<float> gpu_output;
+                CudaTiming gpu_timing;
+                convolution_cuda_naive(input,
                                        gpu_output,
                                        benchmark_case.image_width,
                                        benchmark_case.image_height,
-                                       filter_spec.filter_1d,
+                                       filter_spec.filter_2d,
                                        benchmark_case.filter_size,
+                                       block_size.width,
+                                       block_size.height,
                                        options.warmup_count,
                                        options.repeat_count,
                                        gpu_timing);
 
-            const CorrectnessMetrics correctness = compare_outputs(
-                cpu_separable_output,
-                gpu_output,
-                kCorrectnessTolerance);
+                const CorrectnessMetrics correctness = compare_outputs(
+                    cpu_output,
+                    gpu_output,
+                    kCorrectnessTolerance);
 
-            BenchmarkResult result = make_result(benchmark_case,
-                                                 "cuda_separable",
-                                                 device_name,
-                                                 options.repeat_count,
-                                                 cpu_stats,
-                                                 gpu_timing,
-                                                 correctness);
-            results.push_back(result);
-            print_result(result);
+                BenchmarkResult result = make_result(benchmark_case,
+                                                     "cuda_naive_global_memory",
+                                                     device_name,
+                                                     block_size,
+                                                     options.repeat_count,
+                                                     cpu_stats,
+                                                     gpu_timing,
+                                                     correctness);
+                results.push_back(result);
+                print_result(result);
+            }
+
+            if (has_version_alias(requested_versions, "shared", "cuda_shared_memory_tiled")) {
+                std::vector<float> gpu_output;
+                CudaTiming gpu_timing;
+                convolution_cuda_shared_memory_tiled(input,
+                                                     gpu_output,
+                                                     benchmark_case.image_width,
+                                                     benchmark_case.image_height,
+                                                     filter_spec.filter_2d,
+                                                     benchmark_case.filter_size,
+                                                     block_size.width,
+                                                     block_size.height,
+                                                     options.warmup_count,
+                                                     options.repeat_count,
+                                                     gpu_timing);
+
+                const CorrectnessMetrics correctness = compare_outputs(
+                    cpu_output,
+                    gpu_output,
+                    kCorrectnessTolerance);
+
+                BenchmarkResult result = make_result(benchmark_case,
+                                                     "cuda_shared_memory_tiled",
+                                                     device_name,
+                                                     block_size,
+                                                     options.repeat_count,
+                                                     cpu_stats,
+                                                     gpu_timing,
+                                                     correctness);
+                results.push_back(result);
+                print_result(result);
+            }
+
+            if (has_version_alias(requested_versions, "constant", "cuda_shared_constant_filter")) {
+                std::vector<float> gpu_output;
+                CudaTiming gpu_timing;
+                convolution_cuda_shared_constant_filter(input,
+                                                        gpu_output,
+                                                        benchmark_case.image_width,
+                                                        benchmark_case.image_height,
+                                                        filter_spec.filter_2d,
+                                                        benchmark_case.filter_size,
+                                                        block_size.width,
+                                                        block_size.height,
+                                                        options.warmup_count,
+                                                        options.repeat_count,
+                                                        gpu_timing);
+
+                const CorrectnessMetrics correctness = compare_outputs(
+                    cpu_output,
+                    gpu_output,
+                    kCorrectnessTolerance);
+
+                BenchmarkResult result = make_result(benchmark_case,
+                                                     "cuda_shared_constant_filter",
+                                                     device_name,
+                                                     block_size,
+                                                     options.repeat_count,
+                                                     cpu_stats,
+                                                     gpu_timing,
+                                                     correctness);
+                results.push_back(result);
+                print_result(result);
+            }
+
+            if (run_separable) {
+                std::vector<float> gpu_output;
+                CudaTiming gpu_timing;
+                convolution_cuda_separable(input,
+                                           gpu_output,
+                                           benchmark_case.image_width,
+                                           benchmark_case.image_height,
+                                           filter_spec.filter_1d,
+                                           benchmark_case.filter_size,
+                                           block_size.width,
+                                           block_size.height,
+                                           options.warmup_count,
+                                           options.repeat_count,
+                                           gpu_timing);
+
+                const CorrectnessMetrics correctness = compare_outputs(
+                    cpu_separable_output,
+                    gpu_output,
+                    kCorrectnessTolerance);
+
+                BenchmarkResult result = make_result(benchmark_case,
+                                                     "cuda_separable",
+                                                     device_name,
+                                                     block_size,
+                                                     options.repeat_count,
+                                                     cpu_stats,
+                                                     gpu_timing,
+                                                     correctness);
+                results.push_back(result);
+                print_result(result);
+            }
         }
     }
 
@@ -363,7 +385,8 @@ void write_results_csv(const std::string& path,
         throw std::runtime_error("Failed to open CSV output file: " + path);
     }
 
-    file << "image_width,image_height,filter_size,filter_type,version,device_name,repeat_count,"
+    file << "image_width,image_height,filter_size,filter_type,version,device_name,"
+         << "block_width,block_height,repeat_count,"
          << "estimated_operations,cpu_time_ms,cpu_min_time_ms,cpu_max_time_ms,"
          << "cpu_stddev_time_ms,gpu_kernel_time_ms,gpu_kernel_min_time_ms,"
          << "gpu_kernel_max_time_ms,gpu_kernel_stddev_time_ms,gpu_total_time_ms,"
@@ -381,6 +404,8 @@ void write_results_csv(const std::string& path,
              << result.filter_type << ','
              << result.version << ','
              << '"' << result.device_name << '"' << ','
+             << result.block_width << ','
+             << result.block_height << ','
              << result.repeat_count << ','
              << result.estimated_operations << ','
              << result.cpu_time_ms << ','
@@ -456,7 +481,8 @@ void write_best_versions_csv(const std::string& path,
     }
 
     file << "image_width,image_height,filter_size,filter_type,best_kernel_time_version,"
-         << "best_total_time_version,best_kernel_speedup,best_total_speedup,"
+         << "best_kernel_block_width,best_kernel_block_height,best_total_time_version,"
+         << "best_total_block_width,best_total_block_height,best_kernel_speedup,best_total_speedup,"
          << "correctness_status\n";
     file << std::fixed << std::setprecision(6);
 
@@ -475,7 +501,11 @@ void write_best_versions_csv(const std::string& path,
              << filter_size << ','
              << key.filter_type << ','
              << (best.kernel != nullptr ? best.kernel->version : "none") << ','
+             << (best.kernel != nullptr ? best.kernel->block_width : 0) << ','
+             << (best.kernel != nullptr ? best.kernel->block_height : 0) << ','
              << (best.total != nullptr ? best.total->version : "none") << ','
+             << (best.total != nullptr ? best.total->block_width : 0) << ','
+             << (best.total != nullptr ? best.total->block_height : 0) << ','
              << (best.kernel != nullptr ? best.kernel->kernel_speedup : 0.0) << ','
              << (best.total != nullptr ? best.total->total_speedup : 0.0) << ','
              << (best.all_passed ? "passed" : "failed") << '\n';

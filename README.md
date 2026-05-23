@@ -15,15 +15,14 @@ The implementation starts with the standard CUDA baseline: one CUDA thread compu
 ## Implemented Versions
 
 - `cpu_sequential`: single-threaded CPU reference implementation.
-- `cuda_naive_global_memory`: one CUDA thread per output pixel, 16x16 thread blocks, global-memory image/filter reads.
+- `cuda_naive_global_memory`: one CUDA thread per output pixel, configurable thread-block shape, global-memory image/filter reads.
 - `cuda_shared_memory_tiled`: input tile plus halo loaded into dynamic shared memory.
 - `cuda_shared_constant_filter`: shared-memory input tile with filter coefficients stored in CUDA constant memory.
-- `cuda_separable`: horizontal and vertical 1D passes for the generated separable box filter.
+- `cuda_separable`: horizontal and vertical 1D passes for generated separable box and Gaussian-like filters.
 
 Planned next work:
 
-- Add block-size comparison experiments: 8x8, 16x16, 32x8, and 32x16.
-- Add advanced comparisons step by step after the benchmark foundation remains stable.
+- Add register-tiled or multi-output direct convolution experiments step by step after the benchmark foundation remains stable.
 
 ## Technologies Used
 
@@ -82,13 +81,13 @@ On Windows with Visual Studio generators, the executable is usually created unde
 From the repository root:
 
 ```bash
-./build/convolution_benchmark --image-sizes 512,1024,2048 --filter-sizes 3,5,7,11 --filter-types box,gaussian,sharpen,sobel --repeats 5 --warmups 1 --versions all
+./build/convolution_benchmark --image-sizes 512,1024,2048 --filter-sizes 3,5,7,11 --filter-types box,gaussian,sharpen,sobel --block-sizes 8x8,16x16,32x8,32x16 --repeats 5 --warmups 1 --versions all
 ```
 
 On Windows with a Visual Studio generator:
 
 ```powershell
-.\build\Release\convolution_benchmark.exe --image-sizes 512,1024,2048 --filter-sizes 3,5,7,11 --filter-types box,gaussian,sharpen,sobel --repeats 5 --warmups 1 --versions all
+.\build\Release\convolution_benchmark.exe --image-sizes 512,1024,2048 --filter-sizes 3,5,7,11 --filter-types box,gaussian,sharpen,sobel --block-sizes 8x8,16x16,32x8,32x16 --repeats 5 --warmups 1 --versions all
 ```
 
 The program prints timing and correctness information for each benchmark case and writes CSV output files under `results/`.
@@ -99,7 +98,7 @@ Helper scripts are available under `scripts/`:
 .\scripts\check_environment.ps1
 .\scripts\configure_release.ps1
 .\scripts\build_release.ps1
-.\scripts\run_benchmarks.ps1 -ImageSizes "512,1024,2048" -FilterSizes "3,5,7,11" -FilterTypes "box,gaussian,sharpen,sobel" -Repeats 5 -Warmups 1 -Versions "all"
+.\scripts\run_benchmarks.ps1 -ImageSizes "512,1024,2048" -FilterSizes "3,5,7,11" -FilterTypes "box,gaussian,sharpen,sobel" -BlockSizes "8x8,16x16,32x8,32x16" -Repeats 5 -Warmups 1 -Versions "all"
 ```
 
 Generate plots after benchmark CSV files are populated:
@@ -132,6 +131,12 @@ Data generation:
 - Sharpen and Sobel-like filters use direct convolution versions only.
 - Zero-padding at image boundaries.
 
+CUDA block sizes:
+
+- Default block shape: 16x16.
+- Official block-size sweep: 8x8, 16x16, 32x8, and 32x16.
+- Block sizes are validated so width and height are positive and width * height is at most 1024 threads.
+
 Correctness verification:
 
 - CPU output is the reference.
@@ -144,7 +149,7 @@ Correctness verification:
 The main timing and correctness CSV files use the same expanded benchmark schema:
 
 ```text
-image_width,image_height,filter_size,filter_type,version,device_name,repeat_count,estimated_operations,cpu_time_ms,cpu_min_time_ms,cpu_max_time_ms,cpu_stddev_time_ms,gpu_kernel_time_ms,gpu_kernel_min_time_ms,gpu_kernel_max_time_ms,gpu_kernel_stddev_time_ms,gpu_total_time_ms,gpu_total_min_time_ms,gpu_total_max_time_ms,gpu_total_stddev_time_ms,gpu_allocation_time_ms,gpu_host_to_device_time_ms,gpu_device_to_host_time_ms,gpu_free_time_ms,kernel_speedup,total_speedup,cpu_gflops,gpu_kernel_gflops,max_abs_error,mean_abs_error,passed
+image_width,image_height,filter_size,filter_type,version,device_name,block_width,block_height,repeat_count,estimated_operations,cpu_time_ms,cpu_min_time_ms,cpu_max_time_ms,cpu_stddev_time_ms,gpu_kernel_time_ms,gpu_kernel_min_time_ms,gpu_kernel_max_time_ms,gpu_kernel_stddev_time_ms,gpu_total_time_ms,gpu_total_min_time_ms,gpu_total_max_time_ms,gpu_total_stddev_time_ms,gpu_allocation_time_ms,gpu_host_to_device_time_ms,gpu_device_to_host_time_ms,gpu_free_time_ms,kernel_speedup,total_speedup,cpu_gflops,gpu_kernel_gflops,max_abs_error,mean_abs_error,passed
 ```
 
 Files:
@@ -163,7 +168,7 @@ Files:
 The best-version summary files include:
 
 ```text
-image_width,image_height,filter_size,filter_type,best_kernel_time_version,best_total_time_version,best_kernel_speedup,best_total_speedup,correctness_status
+image_width,image_height,filter_size,filter_type,best_kernel_time_version,best_kernel_block_width,best_kernel_block_height,best_total_time_version,best_total_block_width,best_total_block_height,best_kernel_speedup,best_total_speedup,correctness_status
 ```
 
 ## Final GTX 1650 Benchmark Summary
@@ -177,25 +182,26 @@ Official benchmark matrix:
 - image sizes: 512x512, 1024x1024, 2048x2048
 - filter sizes: 3x3, 5x5, 7x7, 11x11
 - filter types: box, Gaussian-like, sharpen, Sobel-like
+- block sizes: 8x8, 16x16, 32x8, 32x16
 - repeats: 5
 - warmups: 1
 - versions: all implemented CUDA versions
 
 Official result summary:
 
-- 168 benchmark rows were collected.
+- 672 benchmark rows were collected.
 - All CUDA correctness checks passed.
 - Maximum reported absolute error in the CSV is below `1e-6`.
-- Best official kernel-only speedup is `311.912111x` for `cuda_separable` on 2048x2048 with 11x11 Gaussian-like filter.
-- Best official total GPU speedup is `30.644802x` for `cuda_separable` on 2048x2048 with 11x11 box filter.
+- Best official kernel-only speedup is `452.838800x` for `cuda_separable` on 2048x2048 with 11x11 Gaussian-like filter using a 32x8 block.
+- Best official total GPU speedup is `33.483935x` for `cuda_separable` on 2048x2048 with 11x11 Gaussian-like filter using a 32x8 block.
 - `cuda_separable` is reported only for box and Gaussian-like filters.
 
 Supplemental 4096x4096 stress test:
 
-- 56 benchmark rows were collected.
+- 224 benchmark rows were collected.
 - All CUDA correctness checks passed.
-- Best stress-test kernel-only speedup is `486.423457x` for `cuda_separable` with 11x11 Gaussian-like filter.
-- Best stress-test total GPU speedup is `37.275758x` for `cuda_separable` with 11x11 Gaussian-like filter.
+- Best stress-test kernel-only speedup is `466.565398x` for `cuda_separable` with 11x11 Gaussian-like filter using a 32x8 block.
+- Best stress-test total GPU speedup is `36.696784x` for `cuda_separable` with 11x11 box filter using a 32x8 block.
 
 ## Current Implementation Status
 
@@ -209,6 +215,7 @@ Completed:
 - Filter type generation for box, Gaussian-like, sharpen, and Sobel-like filters.
 - Correctness comparison with max and mean absolute error.
 - Configurable benchmark runner with repeat/warm-up counts and selectable versions.
+- Configurable CUDA block-size sweep.
 - Timing statistics: average, minimum, maximum, and standard deviation.
 - GPU timing breakdown: allocation, host-to-device copy, kernel, device-to-host copy, and free time.
 - Estimated operation counts and CPU/CUDA kernel GFLOP/s.
@@ -217,6 +224,7 @@ Completed:
 - Constant-memory filter CUDA implementation.
 - Separable CUDA implementation for separable box and Gaussian-like filters.
 - Plot generation script for benchmark graphs.
+- Block-size speedup plot for the 1024x1024, 7x7, box-filter case.
 - CSV result generation.
 
 Limitations:
@@ -226,5 +234,6 @@ Limitations:
 - Sharpen and Sobel-like filters are centered 3x3 kernels embedded in larger odd filter sizes to preserve the same filter-size benchmark matrix.
 - GTX 1650 Max-Q is the official benchmark GPU, so absolute timings will differ on stronger GPUs.
 - 4096x4096 is included as a supplemental stress test, while the official matrix uses 512/1024/2048 with 5 repeats.
+- Best block shape is workload-dependent; the summary CSV records winners instead of assuming one block shape is universally optimal.
 - GPU total time is a per-run estimate built from fixed allocation/copy/free overhead plus each timed kernel sample; warm-up kernels are excluded.
 - Profiling metrics from Nsight tools are not collected automatically yet.

@@ -44,6 +44,8 @@ The benchmark executable supports configurable:
 
 - image sizes
 - filter sizes
+- filter types
+- CUDA block sizes
 - repeat count
 - warm-up count
 - CUDA versions
@@ -53,6 +55,7 @@ Official final benchmark matrix:
 - image sizes: 512, 1024, 2048
 - filter sizes: 3, 5, 7, 11
 - filter types: box, gaussian, sharpen, sobel
+- block sizes: 8x8, 16x16, 32x8, 32x16
 - repeats: 5
 - warmups: 1
 
@@ -64,6 +67,8 @@ Supplemental stress test:
 
 - image size: 4096
 - filter sizes: 3, 5, 7, 11
+- filter types: box, gaussian, sharpen, sobel
+- block sizes: 8x8, 16x16, 32x8, 32x16
 - repeats: 3
 - all CUDA versions
 
@@ -78,6 +83,7 @@ Phase 1 benchmark rigor update:
 - CSV output includes estimated operation count, CPU GFLOP/s, and CUDA kernel GFLOP/s.
 - `results/summary_best_versions.csv` records the best kernel-time and best total-time version for each image/filter case.
 - Phase 2 adds `filter_type` to all benchmark CSVs and groups best-version summaries by image size, filter size, and filter type.
+- Phase 3 adds runtime-configurable CUDA block dimensions. All CUDA launches now use the selected block shape, shared-memory tile allocation uses `(block_width + 2 * radius) * (block_height + 2 * radius)`, and the best-version summary records the winning block shape.
 
 ## Performance Interpretation Guide
 
@@ -92,13 +98,16 @@ Expected trend:
 Observed final result highlights:
 
 - All official benchmark rows passed correctness.
-- Best official kernel-only speedup after the Phase 2 filter update: `311.912111x`, 2048x2048, 11x11, `gaussian`, `cuda_separable`.
-- Best official total GPU speedup after the Phase 2 filter update: `30.644802x`, 2048x2048, 11x11, `box`, `cuda_separable`.
-- Supplemental 4096x4096 stress test also passed all correctness checks and reached `37.275758x` total speedup for `cuda_separable` with the 11x11 Gaussian-like filter.
+- Phase 3 official matrix contains 672 rows: 3 image sizes * 4 filter sizes * 4 filter types * 4 block sizes, with separable rows only for box and Gaussian-like filters.
+- Best official kernel-only speedup after the block-size sweep: `452.838800x`, 2048x2048, 11x11, `gaussian`, `cuda_separable`, 32x8 block.
+- Best official total GPU speedup after the block-size sweep: `33.483935x`, 2048x2048, 11x11, `gaussian`, `cuda_separable`, 32x8 block.
+- Supplemental 4096x4096 stress test contains 224 rows and passed all correctness checks. It reached `466.565398x` kernel-only speedup for `cuda_separable` with the 11x11 Gaussian-like filter and `36.696784x` total speedup for `cuda_separable` with the 11x11 box filter, both using 32x8 blocks.
 
 Interpretation:
 
 The separable implementation is the strongest kernel-time version for large box and Gaussian-like filters because those filters are mathematically separable. It is intentionally not reported for sharpen or Sobel-like filters. Constant-memory filtering helps the direct convolution variants for larger filter sizes and is often the strongest direct-convolution option for sharpen and Sobel-like filters. Shared-memory tiling is useful when global-memory reuse offsets the extra tile-loading overhead. Small cases can show lower total GPU speedup because setup, allocation, and transfer costs dominate.
+
+The block-size sweep supports the adaptive-tiling theme from the related literature: tile shape changes occupancy, memory coalescing behavior, shared-memory footprint, and halo overhead. The 32x8 block shape won the headline official kernel and total cases, but the best-version summary shows that no single shape dominates every image/filter/version combination. For the final report, this is stronger than reporting only a hardcoded 16x16 launch because it demonstrates that launch configuration is an experimental variable.
 
 The Phase 1 standard-deviation columns expose run-to-run stability. For example, the 2048x2048 11x11 shared-memory tiled run showed noticeably higher kernel variance than the other 11x11 direct variants. This is useful report evidence: a single average can hide benchmark instability, so min/max/stddev should be kept in the final tables or appendix.
 
@@ -106,6 +115,7 @@ The Phase 1 standard-deviation columns expose run-to-run stability. For example,
 
 - Boundary handling can easily diverge between CPU and GPU. Solution: all versions use zero-padding semantics.
 - Shared-memory halo indexing is error-prone. Solution: load a full `(blockDim + 2 * radius)` tile and use CPU comparison for every benchmark case.
+- Hardcoded launch shapes can hide performance sensitivity. Solution: expose block sizes through CLI and scripts, validate them, and record the selected dimensions in every CSV row.
 - Timing can be misleading if only one run is measured. Solution: configurable repeats, warmups, min/max/stddev, and GFLOP/s.
 - GPU transfer overhead affects practical speedup. Solution: CSV includes kernel-only timing, total GPU timing, and allocation/copy/free breakdown.
 - First CUDA calls and small workloads can have high total overhead. Solution: report kernel-only and total timing separately and use larger image sizes for final analysis.

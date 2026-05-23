@@ -35,12 +35,31 @@ std::vector<int> split_csv_ints(const std::string& value) {
     return result;
 }
 
+std::vector<BlockSize> split_csv_block_sizes(const std::string& value) {
+    std::vector<BlockSize> result;
+    for (const std::string& item : split_csv_strings(value)) {
+        const size_t separator = item.find('x');
+        if (separator == std::string::npos || separator == 0 || separator + 1 >= item.size()) {
+            throw std::invalid_argument("Invalid block size: " + item + ". Expected format WIDTHxHEIGHT.");
+        }
+
+        const int width = std::stoi(item.substr(0, separator));
+        const int height = std::stoi(item.substr(separator + 1));
+        if (width <= 0 || height <= 0 || width * height > 1024) {
+            throw std::invalid_argument("Block size must be positive and contain at most 1024 threads: " + item);
+        }
+        result.push_back({width, height});
+    }
+    return result;
+}
+
 void print_usage(const char* executable_name) {
     std::cout << "Usage: " << executable_name << " [options]\n"
               << "Options:\n"
               << "  --image-sizes 512,1024,2048\n"
               << "  --filter-sizes 3,5,7,11\n"
               << "  --filter-types box,gaussian,sharpen,sobel\n"
+              << "  --block-sizes 8x8,16x16,32x8,32x16\n"
               << "  --repeats 5\n"
               << "  --warmups 1\n"
               << "  --versions all\n"
@@ -69,6 +88,8 @@ BenchmarkOptions parse_arguments(int argc, char** argv) {
             options.filter_sizes = split_csv_ints(value);
         } else if (argument == "--filter-types") {
             options.filter_types = split_csv_strings(value);
+        } else if (argument == "--block-sizes") {
+            options.block_sizes = split_csv_block_sizes(value);
         } else if (argument == "--repeats") {
             options.repeat_count = std::stoi(value);
         } else if (argument == "--warmups") {
@@ -81,8 +102,8 @@ BenchmarkOptions parse_arguments(int argc, char** argv) {
     }
 
     if (options.image_sizes.empty() || options.filter_sizes.empty() ||
-        options.filter_types.empty() || options.versions.empty()) {
-        throw std::invalid_argument("Image sizes, filter sizes, filter types, and versions must not be empty.");
+        options.filter_types.empty() || options.block_sizes.empty() || options.versions.empty()) {
+        throw std::invalid_argument("Image sizes, filter sizes, filter types, block sizes, and versions must not be empty.");
     }
     if (options.repeat_count <= 0) {
         throw std::invalid_argument("Repeat count must be positive.");
