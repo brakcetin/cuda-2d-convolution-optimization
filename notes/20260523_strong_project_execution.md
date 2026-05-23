@@ -420,3 +420,43 @@ The Windows CUDA build environment is now usable. The project has crossed an imp
 Next step:
 
 Run the full benchmark matrix after deciding whether the GTX 1650 Max-Q should be the final benchmark GPU or only the development/test GPU.
+
+### 14. Benchmark Hardware Decision
+
+Decision:
+
+All tests, correctness verification runs, and real benchmark runs for Burak's implementation workflow will be performed on:
+
+```text
+NVIDIA GeForce GTX 1650 with Max-Q Design
+```
+
+Context:
+
+- Burak has the GTX 1650 machine locally.
+- The group member has access to an RTX 4070.
+- The RTX 4070 may be useful for optional comparison later, but it is not the primary benchmark source for Burak's current workflow.
+
+Interpretation:
+
+Using the GTX 1650 as the official benchmark machine keeps the workflow reproducible for Burak because the same machine is used for development, correctness checks, and result collection. The report should clearly state the benchmark hardware so the absolute speedup values are interpreted correctly.
+
+Recommended wording for report:
+
+```text
+All benchmark results reported in this study were collected on an NVIDIA GeForce GTX 1650 with Max-Q Design. An RTX 4070 was available to another team member, but the main performance tables use a single consistent GPU platform to keep measurements reproducible.
+```
+
+Recommended full benchmark command for GTX 1650:
+
+```powershell
+.\scripts\run_benchmarks.ps1 -ImageSizes "512,1024,2048" -FilterSizes "3,5,7,11" -Repeats 5 -Warmups 1 -Versions "all"
+```
+
+Optional larger workload:
+
+```powershell
+.\scripts\run_benchmarks.ps1 -ImageSizes "4096" -FilterSizes "3,5,7,11" -Repeats 3 -Warmups 1 -Versions "all"
+```
+
+Only include 4096x4096 in the final report if it completes reliably on the GTX 1650 and does not make the benchmark process impractical.
