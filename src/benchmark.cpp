@@ -213,6 +213,35 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {
             results.push_back(result);
             print_result(result);
         }
+
+        if (has_version_alias(requested_versions, "constant", "cuda_shared_constant_filter")) {
+            std::vector<float> gpu_output;
+            CudaTiming gpu_timing;
+            convolution_cuda_shared_constant_filter(input,
+                                                    gpu_output,
+                                                    benchmark_case.image_width,
+                                                    benchmark_case.image_height,
+                                                    filter,
+                                                    benchmark_case.filter_size,
+                                                    options.warmup_count,
+                                                    options.repeat_count,
+                                                    gpu_timing);
+
+            const CorrectnessMetrics correctness = compare_outputs(
+                cpu_output,
+                gpu_output,
+                kCorrectnessTolerance);
+
+            BenchmarkResult result = make_result(benchmark_case,
+                                                 "cuda_shared_constant_filter",
+                                                 device_name,
+                                                 options.repeat_count,
+                                                 cpu_time_ms,
+                                                 gpu_timing,
+                                                 correctness);
+            results.push_back(result);
+            print_result(result);
+        }
     }
 
     return results;

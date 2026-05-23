@@ -151,3 +151,35 @@ How to run only naive and shared versions:
 Next step:
 
 Add constant-memory filter coefficients, keeping shared-memory input tiling in place.
+
+### 6. Added Constant-Memory Filter CUDA Version
+
+Added version:
+
+```text
+cuda_shared_constant_filter
+```
+
+Kernel idea:
+
+- Input image tile is still loaded into dynamic shared memory.
+- Filter coefficients are copied into CUDA constant memory before launching the kernel.
+- The constant filter storage supports the planned maximum direct filter size: 11x11, or 121 floats.
+
+Why this matters:
+
+The filter is small, read-only, and accessed by all threads. Constant memory is a standard CUDA memory-space optimization for this pattern. This gives the report a clean comparison:
+
+```text
+naive global memory -> shared input tile -> shared input tile + constant filter
+```
+
+How to run this comparison:
+
+```powershell
+.\scripts\run_benchmarks.ps1 -ImageSizes "512,1024,2048" -FilterSizes "3,5,7,11" -Repeats 5 -Warmups 1 -Versions "cuda_naive_global_memory,cuda_shared_memory_tiled,cuda_shared_constant_filter"
+```
+
+Next step:
+
+Add separable convolution for filters that can be represented as two 1D passes.
