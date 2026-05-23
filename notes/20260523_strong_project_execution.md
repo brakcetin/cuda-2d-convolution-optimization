@@ -1,0 +1,96 @@
+# 20260523 - Strong Project Execution Log
+
+## Purpose
+
+This note tracks the chronological implementation of the stronger CENG-479 CUDA convolution project plan. It should help future reimplementation by explaining what changed, why it changed, which commands were used, and what the next engineering step is.
+
+## Chronological Work Log
+
+### 1. Confirmed Current Repository State
+
+Commands:
+
+```powershell
+git status --short
+git log --oneline --decorate -5
+rg --files docs notes src include results
+```
+
+Observed:
+
+- `main` was already connected to `origin/main`.
+- Latest pushed commit before execution was `20b50c1 Expand initial milestone notes`.
+- The proposal document had been renamed locally.
+- Git saw this as a deleted old proposal file plus a new renamed proposal file.
+
+Interpretation:
+
+The proposal rename was a separate history event and should be committed before any code work. That keeps the repository timeline understandable.
+
+### 2. Committed Proposal Rename
+
+Commands:
+
+```powershell
+git add docs\Submissions\CENG479-Sub1-ProjectProposal-2211808002-Burak_Cetin.md docs\Submissions\CENG479-Sub1-ProjectProposal-Cagri-Burak.md
+git diff --cached --name-status
+git commit -m "Rename project proposal document"
+git push
+```
+
+Git recognized the change as a 100% rename:
+
+```text
+docs/Submissions/CENG479-Sub1-ProjectProposal-2211808002-Burak_Cetin.md
+-> docs/Submissions/CENG479-Sub1-ProjectProposal-Cagri-Burak.md
+```
+
+Commit:
+
+```text
+4c560cb Rename project proposal document
+```
+
+Interpretation:
+
+This commit belongs only to the document rename and was pushed immediately. This matches the project rule that commits should be useful checkpoints.
+
+### 3. Added Helper Scripts
+
+Added:
+
+- `scripts/check_environment.ps1`
+- `scripts/configure_release.ps1`
+- `scripts/build_release.ps1`
+- `scripts/run_benchmarks.ps1`
+
+Why:
+
+The project must be reproducible on an unknown CUDA GPU machine. These scripts reduce manual command mistakes during final benchmark collection.
+
+Script purposes:
+
+- `check_environment.ps1`: verifies `cmake`, `nvcc`, and `nvidia-smi`.
+- `configure_release.ps1`: configures CMake Release build into `build/`.
+- `build_release.ps1`: builds the configured project.
+- `run_benchmarks.ps1`: runs benchmark executable with image sizes, filter sizes, repeats, warmups, and selected versions.
+
+Future benchmark command example:
+
+```powershell
+.\scripts\check_environment.ps1
+.\scripts\configure_release.ps1
+.\scripts\build_release.ps1
+.\scripts\run_benchmarks.ps1 -ImageSizes "512,1024,2048" -FilterSizes "3,5,7,11" -Repeats 5 -Warmups 1 -Versions "all"
+```
+
+## Interpretation
+
+The project is now moving from a small demo toward a real performance-study workflow. The scripts are intentionally simple because reliability and reproducibility matter more than clever automation for this course submission.
+
+## Next Steps
+
+1. Commit and push the helper scripts and this note.
+2. Make the C++ benchmark executable accept CLI benchmark parameters.
+3. Add all planned CUDA versions one milestone at a time.
+4. Keep updating notes after each milestone.
