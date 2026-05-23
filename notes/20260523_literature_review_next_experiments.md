@@ -4,6 +4,12 @@
 
 This note connects the seven local paper files to concrete next improvements for the CUDA 2D convolution project. The goal is to make the project stronger while staying realistic for CENG-479.
 
+Update after scope decision:
+
+- The earlier "do not add unless there is extra time" items are no longer excluded.
+- We now have enough time and will add advanced comparisons step by step.
+- The full expanded roadmap is recorded in `notes/20260523_full_expansion_roadmap.md`.
+
 ## Papers Read
 
 - `An extended analysis of memory hierarchies for efficient implementations of image processing applications.md`
