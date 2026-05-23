@@ -167,6 +167,13 @@ Files:
 - `results/summary_best_versions_gtx1650_4096_stress.csv`
 - `results/plots/`
 
+Final documentation artifacts:
+
+- `docs/FinalReport.md`
+- `docs/BenchmarkTables.md`
+- `docs/PresentationOutline.md`
+- `docs/ImplementationNotes.md`
+
 The best-version summary files include:
 
 ```text
@@ -206,6 +213,16 @@ Supplemental 4096x4096 stress test:
 - All CUDA correctness checks passed.
 - Best stress-test kernel-only speedup is `474.771679x` for `cuda_separable` with 11x11 box filter using a 32x8 block.
 - Best stress-test total GPU speedup is `36.079514x` for `cuda_separable` with 11x11 Gaussian-like filter using a 16x16 block.
+
+Report-ready plots:
+
+- `results/plots/speedup_by_version.png`
+- `results/plots/time_by_image_size_3x3.png`
+- `results/plots/speedup_by_filter_size_1024.png`
+- `results/plots/kernel_vs_total_time.png`
+- `results/plots/speedup_by_filter_type_1024_7x7.png`
+- `results/plots/speedup_by_block_size_1024_7x7_box.png`
+- `results/plots/direct_versions_speedup_1024_7x7_sobel.png`
 
 ## Current Implementation Status
 
