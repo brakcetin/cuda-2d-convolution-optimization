@@ -174,6 +174,9 @@ Final documentation artifacts:
 
 - `docs/FinalReport.md`
 - `docs/BenchmarkTables.md`
+- `docs/ResultInterpretation.md`
+- `docs/ProfilingGuide.md`
+- `docs/GpuComparison.md`
 - `docs/PresentationOutline.md`
 - `docs/ImplementationNotes.md`
 
