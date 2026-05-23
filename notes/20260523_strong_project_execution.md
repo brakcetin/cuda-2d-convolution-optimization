@@ -121,3 +121,33 @@ This turns the program into a proper benchmark tool. The final GPU is unknown, s
 Next step:
 
 Add the shared-memory tiled CUDA version and plug it into the same benchmark pipeline.
+
+### 5. Added Shared-Memory Tiled CUDA Convolution
+
+Added version:
+
+```text
+cuda_shared_memory_tiled
+```
+
+Kernel idea:
+
+- Each CUDA block still computes a 16x16 output tile.
+- Threads cooperatively load a larger input tile into dynamic shared memory.
+- The shared tile includes halo pixels required by the filter radius.
+- Out-of-image halo values are loaded as zero, preserving zero-padding behavior.
+- After `__syncthreads()`, each thread computes its output pixel from shared memory.
+
+Why this matters:
+
+The naive CUDA version repeatedly reads overlapping neighborhoods from global memory. Shared-memory tiling reduces redundant global memory traffic, especially for 7x7 and 11x11 filters. This directly matches the proposal's memory-hierarchy-aware optimization goal.
+
+How to run only naive and shared versions:
+
+```powershell
+.\scripts\run_benchmarks.ps1 -ImageSizes "512,1024" -FilterSizes "3,5,7,11" -Repeats 5 -Warmups 1 -Versions "cuda_naive_global_memory,cuda_shared_memory_tiled"
+```
+
+Next step:
+
+Add constant-memory filter coefficients, keeping shared-memory input tiling in place.

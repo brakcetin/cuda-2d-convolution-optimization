@@ -18,8 +18,60 @@ namespace {
 bool should_run_version(const std::set<std::string>& requested_versions,
                         const std::string& version) {
     return requested_versions.count("all") > 0 ||
-           requested_versions.count(version) > 0 ||
-           requested_versions.count("naive") > 0;
+           requested_versions.count(version) > 0;
+}
+
+BenchmarkResult make_result(const BenchmarkCase& benchmark_case,
+                            const std::string& version,
+                            const std::string& device_name,
+                            int repeat_count,
+                            double cpu_time_ms,
+                            const CudaTiming& gpu_timing,
+                            const CorrectnessMetrics& correctness) {
+    BenchmarkResult result;
+    result.image_width = benchmark_case.image_width;
+    result.image_height = benchmark_case.image_height;
+    result.filter_size = benchmark_case.filter_size;
+    result.version = version;
+    result.device_name = device_name;
+    result.repeat_count = repeat_count;
+    result.cpu_time_ms = cpu_time_ms;
+    result.gpu_kernel_time_ms = gpu_timing.kernel_time_ms;
+    result.gpu_total_time_ms = gpu_timing.total_time_ms;
+    result.kernel_speedup = gpu_timing.kernel_time_ms > 0.0f
+                                ? cpu_time_ms / static_cast<double>(gpu_timing.kernel_time_ms)
+                                : 0.0;
+    result.total_speedup = gpu_timing.total_time_ms > 0.0
+                               ? cpu_time_ms / gpu_timing.total_time_ms
+                               : 0.0;
+    result.max_abs_error = correctness.max_abs_error;
+    result.mean_abs_error = correctness.mean_abs_error;
+    result.passed = correctness.passed;
+    return result;
+}
+
+void print_result(const BenchmarkResult& result) {
+    std::cout << "Image " << result.image_width << "x"
+              << result.image_height
+              << ", filter " << result.filter_size << "x"
+              << result.filter_size
+              << ", version " << result.version
+              << ": CPU avg " << result.cpu_time_ms << " ms, CUDA kernel avg "
+              << result.gpu_kernel_time_ms << " ms, CUDA total "
+              << result.gpu_total_time_ms << " ms, kernel speedup "
+              << result.kernel_speedup << ", total speedup "
+              << result.total_speedup << ", max error "
+              << result.max_abs_error << ", mean error "
+              << result.mean_abs_error << ", "
+              << (result.passed ? "PASSED" : "FAILED")
+              << '\n';
+}
+
+bool has_version_alias(const std::set<std::string>& requested_versions,
+                       const std::string& alias,
+                       const std::string& canonical_version) {
+    return should_run_version(requested_versions, canonical_version) ||
+           requested_versions.count(alias) > 0;
 }
 
 double run_cpu_average(const std::vector<float>& input,
@@ -104,7 +156,7 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {
                                                    benchmark_case.filter_size,
                                                    options.repeat_count);
 
-        if (should_run_version(requested_versions, "cuda_naive_global_memory")) {
+        if (has_version_alias(requested_versions, "naive", "cuda_naive_global_memory")) {
             std::vector<float> gpu_output;
             CudaTiming gpu_timing;
             convolution_cuda_naive(input,
@@ -122,41 +174,44 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {
                 gpu_output,
                 kCorrectnessTolerance);
 
-            BenchmarkResult result;
-            result.image_width = benchmark_case.image_width;
-            result.image_height = benchmark_case.image_height;
-            result.filter_size = benchmark_case.filter_size;
-            result.version = "cuda_naive_global_memory";
-            result.device_name = device_name;
-            result.repeat_count = options.repeat_count;
-            result.cpu_time_ms = cpu_time_ms;
-            result.gpu_kernel_time_ms = gpu_timing.kernel_time_ms;
-            result.gpu_total_time_ms = gpu_timing.total_time_ms;
-            result.kernel_speedup = gpu_timing.kernel_time_ms > 0.0f
-                                        ? cpu_time_ms / static_cast<double>(gpu_timing.kernel_time_ms)
-                                        : 0.0;
-            result.total_speedup = gpu_timing.total_time_ms > 0.0
-                                       ? cpu_time_ms / gpu_timing.total_time_ms
-                                       : 0.0;
-            result.max_abs_error = correctness.max_abs_error;
-            result.mean_abs_error = correctness.mean_abs_error;
-            result.passed = correctness.passed;
+            BenchmarkResult result = make_result(benchmark_case,
+                                                 "cuda_naive_global_memory",
+                                                 device_name,
+                                                 options.repeat_count,
+                                                 cpu_time_ms,
+                                                 gpu_timing,
+                                                 correctness);
             results.push_back(result);
+            print_result(result);
+        }
 
-            std::cout << "Image " << benchmark_case.image_width << "x"
-                      << benchmark_case.image_height
-                      << ", filter " << benchmark_case.filter_size << "x"
-                      << benchmark_case.filter_size
-                      << ", version " << result.version
-                      << ": CPU avg " << cpu_time_ms << " ms, CUDA kernel avg "
-                      << gpu_timing.kernel_time_ms << " ms, CUDA total "
-                      << gpu_timing.total_time_ms << " ms, kernel speedup "
-                      << result.kernel_speedup << ", total speedup "
-                      << result.total_speedup << ", max error "
-                      << correctness.max_abs_error << ", mean error "
-                      << correctness.mean_abs_error << ", "
-                      << (correctness.passed ? "PASSED" : "FAILED")
-                      << '\n';
+        if (has_version_alias(requested_versions, "shared", "cuda_shared_memory_tiled")) {
+            std::vector<float> gpu_output;
+            CudaTiming gpu_timing;
+            convolution_cuda_shared_memory_tiled(input,
+                                                 gpu_output,
+                                                 benchmark_case.image_width,
+                                                 benchmark_case.image_height,
+                                                 filter,
+                                                 benchmark_case.filter_size,
+                                                 options.warmup_count,
+                                                 options.repeat_count,
+                                                 gpu_timing);
+
+            const CorrectnessMetrics correctness = compare_outputs(
+                cpu_output,
+                gpu_output,
+                kCorrectnessTolerance);
+
+            BenchmarkResult result = make_result(benchmark_case,
+                                                 "cuda_shared_memory_tiled",
+                                                 device_name,
+                                                 options.repeat_count,
+                                                 cpu_time_ms,
+                                                 gpu_timing,
+                                                 correctness);
+            results.push_back(result);
+            print_result(result);
         }
     }
 
