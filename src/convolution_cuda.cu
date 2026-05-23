@@ -1,5 +1,7 @@
 #include "convolution_cuda.cuh"
 
+#include <algorithm>
+#include <chrono>
 #include <cstdlib>
 #include <stdexcept>
 
@@ -66,7 +68,9 @@ void convolution_cuda_naive(const std::vector<float>& input,
                             int height,
                             const std::vector<float>& filter,
                             int filter_size,
-                            float& kernel_time_ms) {
+                            int warmup_count,
+                            int repeat_count,
+                            CudaTiming& timing) {
     if (width <= 0 || height <= 0 || filter_size <= 0 || filter_size % 2 == 0) {
         throw std::invalid_argument("Image dimensions must be positive and filter size must be odd.");
     }
@@ -78,7 +82,9 @@ void convolution_cuda_naive(const std::vector<float>& input,
     }
 
     output.assign(static_cast<size_t>(width * height), 0.0f);
-    kernel_time_ms = 0.0f;
+    timing = {};
+    warmup_count = std::max(warmup_count, 0);
+    repeat_count = std::max(repeat_count, 1);
 
     const size_t image_bytes = input.size() * sizeof(float);
     const size_t filter_bytes = filter.size() * sizeof(float);
@@ -89,6 +95,8 @@ void convolution_cuda_naive(const std::vector<float>& input,
     cudaEvent_t start = nullptr;
     cudaEvent_t stop = nullptr;
 
+    const auto total_start = std::chrono::high_resolution_clock::now();
+
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_input), image_bytes));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_output), image_bytes));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_filter), filter_bytes));
@@ -96,18 +104,23 @@ void convolution_cuda_naive(const std::vector<float>& input,
     CUDA_CHECK(cudaMemcpy(d_input, input.data(), image_bytes, cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(d_filter, filter.data(), filter_bytes, cudaMemcpyHostToDevice));
 
-    launch_naive_kernel(d_input, d_output, width, height, d_filter, filter_size);
-    CUDA_CHECK(cudaGetLastError());
+    for (int warmup = 0; warmup < warmup_count; ++warmup) {
+        launch_naive_kernel(d_input, d_output, width, height, d_filter, filter_size);
+        CUDA_CHECK(cudaGetLastError());
+    }
     CUDA_CHECK(cudaDeviceSynchronize());
 
     CUDA_CHECK(cudaEventCreate(&start));
     CUDA_CHECK(cudaEventCreate(&stop));
     CUDA_CHECK(cudaEventRecord(start));
-    launch_naive_kernel(d_input, d_output, width, height, d_filter, filter_size);
-    CUDA_CHECK(cudaGetLastError());
+    for (int repeat = 0; repeat < repeat_count; ++repeat) {
+        launch_naive_kernel(d_input, d_output, width, height, d_filter, filter_size);
+        CUDA_CHECK(cudaGetLastError());
+    }
     CUDA_CHECK(cudaEventRecord(stop));
     CUDA_CHECK(cudaEventSynchronize(stop));
-    CUDA_CHECK(cudaEventElapsedTime(&kernel_time_ms, start, stop));
+    CUDA_CHECK(cudaEventElapsedTime(&timing.kernel_time_ms, start, stop));
+    timing.kernel_time_ms /= static_cast<float>(repeat_count);
 
     CUDA_CHECK(cudaMemcpy(output.data(), d_output, image_bytes, cudaMemcpyDeviceToHost));
 
@@ -116,4 +129,17 @@ void convolution_cuda_naive(const std::vector<float>& input,
     CUDA_CHECK(cudaFree(d_filter));
     CUDA_CHECK(cudaFree(d_output));
     CUDA_CHECK(cudaFree(d_input));
+
+    const auto total_stop = std::chrono::high_resolution_clock::now();
+    timing.total_time_ms = std::chrono::duration<double, std::milli>(
+        total_stop - total_start).count();
+}
+
+std::string get_cuda_device_name() {
+    int device = 0;
+    CUDA_CHECK(cudaGetDevice(&device));
+
+    cudaDeviceProp properties{};
+    CUDA_CHECK(cudaGetDeviceProperties(&properties, device));
+    return properties.name;
 }

@@ -94,3 +94,30 @@ The project is now moving from a small demo toward a real performance-study work
 2. Make the C++ benchmark executable accept CLI benchmark parameters.
 3. Add all planned CUDA versions one milestone at a time.
 4. Keep updating notes after each milestone.
+
+### 4. Stabilized Benchmark Architecture
+
+Changed the benchmark executable so it can be used as an experiment harness instead of a hard-coded demo.
+
+New command-line options:
+
+```powershell
+.\build\Release\convolution_benchmark.exe --image-sizes 512,1024,2048 --filter-sizes 3,5,7,11 --repeats 5 --warmups 1 --versions all
+```
+
+What changed:
+
+- Image sizes are configurable.
+- Filter sizes are configurable.
+- Repeat count is configurable.
+- Warm-up count is configurable.
+- Version selection is configurable.
+- CSV output now includes device name, repeat count, GPU total time, kernel speedup, and total speedup.
+
+Interpretation:
+
+This turns the program into a proper benchmark tool. The final GPU is unknown, so the workload must be adjustable without recompiling. The default matrix is ambitious enough for the proposal but still realistic: 512, 1024, and 2048 image sizes with 3x3, 5x5, 7x7, and 11x11 filters.
+
+Next step:
+
+Add the shared-memory tiled CUDA version and plug it into the same benchmark pipeline.

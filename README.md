@@ -80,16 +80,25 @@ On Windows with Visual Studio generators, the executable is usually created unde
 From the repository root:
 
 ```bash
-./build/convolution_benchmark
+./build/convolution_benchmark --image-sizes 512,1024,2048 --filter-sizes 3,5,7,11 --repeats 5 --warmups 1 --versions all
 ```
 
 On Windows with a Visual Studio generator:
 
 ```powershell
-.\build\Release\convolution_benchmark.exe
+.\build\Release\convolution_benchmark.exe --image-sizes 512,1024,2048 --filter-sizes 3,5,7,11 --repeats 5 --warmups 1 --versions all
 ```
 
 The program prints timing and correctness information for each benchmark case and writes CSV output files under `results/`.
+
+Helper scripts are available under `scripts/`:
+
+```powershell
+.\scripts\check_environment.ps1
+.\scripts\configure_release.ps1
+.\scripts\build_release.ps1
+.\scripts\run_benchmarks.ps1 -ImageSizes "512,1024,2048" -FilterSizes "3,5,7,11" -Repeats 5 -Warmups 1 -Versions "all"
+```
 
 ## Benchmark Parameters
 
@@ -97,11 +106,14 @@ Current image sizes:
 
 - 512x512
 - 1024x1024
+- 2048x2048
 
 Current filter sizes:
 
 - 3x3
 - 5x5
+- 7x7
+- 11x11
 
 Data generation:
 
@@ -121,7 +133,7 @@ Correctness verification:
 Both CSV files use the same columns:
 
 ```text
-image_width,image_height,filter_size,version,cpu_time_ms,gpu_kernel_time_ms,speedup,max_abs_error,mean_abs_error,passed
+image_width,image_height,filter_size,version,device_name,repeat_count,cpu_time_ms,gpu_kernel_time_ms,gpu_total_time_ms,kernel_speedup,total_speedup,max_abs_error,mean_abs_error,passed
 ```
 
 Files:
@@ -139,7 +151,7 @@ Completed:
 - CUDA error checking macro.
 - Synthetic image/filter generation.
 - Correctness comparison with max and mean absolute error.
-- Basic benchmark runner.
+- Configurable benchmark runner with repeat/warm-up counts and selectable versions.
 - CSV result generation.
 
 Limitations:

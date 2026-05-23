@@ -6,6 +6,8 @@
 
 #include <cuda_runtime.h>
 
+#include "common.h"
+
 #define CUDA_CHECK(call)                                                                  \
     do {                                                                                  \
         cudaError_t status = (call);                                                      \
@@ -22,4 +24,8 @@ void convolution_cuda_naive(const std::vector<float>& input,
                             int height,
                             const std::vector<float>& filter,
                             int filter_size,
-                            float& kernel_time_ms);
+                            int warmup_count,
+                            int repeat_count,
+                            CudaTiming& timing);
+
+std::string get_cuda_device_name();
