@@ -22,9 +22,11 @@ The implementation starts with the standard CUDA baseline: one CUDA thread compu
 - `cuda_register_tiled`: direct global-memory 2x1 register-tiled convolution with two per-thread accumulators.
 - `cuda_separable`: horizontal and vertical 1D passes for generated separable box and Gaussian-like filters.
 
-Planned next work:
+Final polish items:
 
-- Prepare final report tables and presentation slides from the committed benchmark results.
+- Convert the Markdown report into the final PDF submission.
+- Prepare the 10-minute presentation from the outline and committed plots.
+- Optionally add RTX 4070 secondary results if the teammate runs the same benchmark matrix.
 
 ## Technologies Used
 
@@ -212,6 +214,23 @@ Historical supplemental 4096x4096 stress files:
 
 - The older `*_4096_stress.csv` files are preserved as lower-repeat historical artifacts.
 - The official analysis now uses 4096x4096 in the 5-repeat matrix above.
+
+## Proposal And Submission Alignment
+
+This repository satisfies the original proposal and Submission 2 requirements:
+
+- Sequential baseline: `cpu_sequential` is single-threaded and used as the correctness oracle.
+- Parallel implementation: multiple CUDA kernels are implemented and benchmarked.
+- Memory hierarchy study: naive global memory, shared-memory tiling, constant-memory filters, and register/output tiling are compared.
+- Filter comparison: box, Gaussian-like, sharpen, and Sobel-like filters are included.
+- Large workload comparison: 512x512 through 4096x4096 image sizes are included in the official benchmark.
+- Correctness verification: every CUDA row reports max/mean absolute error and pass/fail status.
+- Performance analysis: CSVs and plots include CPU time, kernel time, total GPU time, speedup, GFLOP/s, and timing statistics.
+- Documentation: final report draft, benchmark tables, implementation notes, and presentation outline are provided under `docs/`.
+
+## UI Decision
+
+No UI is required for this course project. The official deliverables are source code, GitHub link, implementation report, benchmark tables/graphs, and a 10-minute presentation. The project intentionally focuses on CUDA implementation quality, correctness verification, reproducible benchmarking, and result interpretation instead of building a graphical interface.
 
 Report-ready plots:
 

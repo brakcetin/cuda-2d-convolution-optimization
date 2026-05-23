@@ -13,6 +13,12 @@ This project studies how CUDA can accelerate grayscale 2D convolution compared w
 
 The final benchmark uses synthetic grayscale images and four filter types: box, Gaussian-like, sharpen, and Sobel-like. All CUDA results are checked against CPU reference outputs before being included in the analysis.
 
+### Proposal Alignment
+
+The final implementation follows and extends the original project proposal. The required sequential CPU baseline, naive CUDA implementation, shared-memory tiled implementation, constant-memory filter optimization, separable convolution path, correctness verification, and speedup analysis are all implemented. The benchmark matrix also includes the proposed large image sizes up to 4096x4096, multiple filter sizes from 3x3 to 11x11, and both kernel-only and total GPU timing.
+
+The project also adds stronger comparison dimensions beyond the proposal: filter-type experiments, block-size sweeps, timing statistics, GFLOP/s estimates, GPU transfer/allocation breakdown, multi-output direct convolution, and register-tiled direct convolution. These additions support the project goal of being a performance study rather than a minimal CPU-vs-GPU demo.
+
 ## 2. Sequential Baseline Implementation
 
 The sequential baseline is a single-threaded C++ implementation. It uses nested loops over image rows, image columns, filter rows, and filter columns. Boundary handling uses zero-padding semantics: when a filter coordinate falls outside the image, that value contributes zero to the sum.
@@ -113,6 +119,8 @@ The project successfully implements and benchmarks a sequential CPU baseline and
 The strongest kernel-only result comes from separable convolution on a 4096x4096, 11x11 Gaussian-like filter, reaching 744.216x speedup. The strongest total-time result is the same separable case, reaching 56.205x speedup. The strongest direct-convolution kernel result comes from shared+constant filtering on a 4096x4096, 11x11 Sobel-like filter, reaching 432.778x speedup. This shows that both algorithmic structure and memory hierarchy matter.
 
 Future improvements could include Nsight Compute profiling, automated report table generation, RTX 4070 comparison, RGB image support, and real image input. More advanced convolution methods such as FFT, Winograd, cuDNN, and OpenCV/GpuCV integration remain outside the current project scope.
+
+No graphical UI is required for this project. The course deliverables focus on source code, GitHub repository link, implementation report, benchmark tables/graphs, and a 10-minute presentation. For that reason, the implementation prioritizes reproducible command-line benchmarking and clear CSV/plot outputs.
 
 ## 8. References
 

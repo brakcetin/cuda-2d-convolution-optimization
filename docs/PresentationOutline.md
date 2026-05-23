@@ -4,6 +4,8 @@ Target duration: 10 minutes
 Format: 10 slides  
 Team split: both members present
 
+Submission reminder: both team members must speak during the live presentation.
+
 ## Slide 1 - Title and Problem
 
 Speaker: Burak  
@@ -19,6 +21,10 @@ Content:
 Speaker note:
 
 Open by stating that the project is a CUDA performance study, not just a single GPU implementation.
+
+Script:
+
+"Our project studies how much 2D image convolution can be accelerated on an NVIDIA GPU, and how different CUDA memory strategies change performance."
 
 ## Slide 2 - Why Convolution Is Parallel
 
@@ -55,6 +61,10 @@ Speaker note:
 
 Mention that sharpen and Sobel-like filters are not treated as separable, so direct CUDA versions remain important.
 
+Script:
+
+"We intentionally compare both direct convolution versions and separable convolution, because not every useful image filter is separable."
+
 ## Slide 4 - Benchmark Methodology
 
 Speaker: Cagri  
@@ -89,6 +99,10 @@ Content:
 Speaker note:
 
 This slide protects the project in Q&A: all performance numbers are backed by correctness checks.
+
+Script:
+
+"Every CUDA timing row is included only with a CPU comparison, maximum absolute error, mean absolute error, and pass/fail status."
 
 ## Slide 6 - Performance Results: Speedup by Version
 
@@ -141,6 +155,10 @@ Speaker note:
 
 The key interpretation: separable is strongest when mathematically valid; constant memory is strongest for many large direct filters.
 
+Script:
+
+"The important point is not that one kernel wins everywhere. The best method depends on filter structure, block shape, and whether transfer overhead is included."
+
 ## Slide 9 - Challenges and Solutions
 
 Speaker: Cagri  
@@ -185,3 +203,21 @@ Important:
 
 - For the final presentation, show committed official results, not the quick demo CSV produced by the smoke run.
 - If the smoke run is used during practice, restore official CSVs afterward from `results/timing_results_gtx1650_official.csv`, `results/correctness_results_gtx1650_official.csv`, and `results/summary_best_versions_gtx1650_official.csv`.
+
+Restore command after a quick demo:
+
+```powershell
+Copy-Item results\timing_results_gtx1650_official.csv results\timing_results.csv
+Copy-Item results\correctness_results_gtx1650_official.csv results\correctness_results.csv
+Copy-Item results\summary_best_versions_gtx1650_official.csv results\summary_best_versions.csv
+python .\scripts\plot_results.py --input results\timing_results.csv --output-dir results\plots
+```
+
+## Q&A Preparation
+
+- Why is the CPU baseline single-threaded? To measure speedup against the required sequential baseline.
+- Why synthetic images? They make runs reproducible and avoid image-loading dependencies in the official benchmark.
+- Why no UI? Submission 2 asks for source code, report, benchmark results, GitHub link, and presentation, not an app interface.
+- Why not use separable convolution for Sobel/sharpen? The project reports separable only for filters generated from a separable 1D representation.
+- Why is total GPU speedup lower than kernel-only speedup? Total time includes allocation and host-device transfers.
+- Why GTX 1650 as official GPU? It is the consistent local benchmark machine; RTX 4070 can be added as secondary comparison if available.

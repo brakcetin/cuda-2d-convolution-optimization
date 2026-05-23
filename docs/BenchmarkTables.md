@@ -29,6 +29,8 @@ Historical supplemental files:
 - The older `results/*_gtx1650_4096_stress.csv` files are preserved as lower-repeat 4096-only artifacts.
 - The official analysis now uses the 4096x4096 rows in the 5-repeat matrix above.
 
+These tables are intended for report and presentation use. The full raw matrix should remain in CSV form because the official timing file contains 1408 rows.
+
 ## Headline Results
 
 | Metric | Result |

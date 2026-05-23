@@ -111,6 +111,19 @@ The multi-output and register-tiled direct kernels strengthen the direct-convolu
 
 The Phase 1 standard-deviation columns expose run-to-run stability. For example, the 2048x2048 11x11 shared-memory tiled run showed noticeably higher kernel variance than the other 11x11 direct variants. This is useful report evidence: a single average can hide benchmark instability, so min/max/stddev should be kept in the final tables or appendix.
 
+## Submission Fit
+
+The project fits Submission 2 because it includes:
+
+- a sequential CPU baseline
+- several parallel CUDA implementations
+- correctness verification against CPU output
+- benchmark tables and generated graphs
+- GitHub-ready source code and scripts
+- report and presentation drafts
+
+No UI is required. A graphical interface would not improve the grading criteria unless the instructor specifically requested one. The strongest use of effort is the CUDA implementation, benchmark rigor, result interpretation, and presentation material.
+
 ## Challenges And Solutions
 
 - Boundary handling can easily diverge between CPU and GPU. Solution: all versions use zero-padding semantics.
