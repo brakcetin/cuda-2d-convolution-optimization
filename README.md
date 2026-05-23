@@ -22,9 +22,9 @@ The implementation starts with the standard CUDA baseline: one CUDA thread compu
 
 Planned next work:
 
-- Run full benchmark matrix on the final CUDA machine.
-- Generate final graphs from measured CSV files.
-- Add final report and presentation result summaries.
+- Use the generated benchmark CSVs and plots in the final report.
+- Prepare the 10-minute presentation with benchmark results.
+- Optionally add Nsight profiling screenshots if time permits.
 
 ## Technologies Used
 
@@ -105,6 +105,7 @@ Helper scripts are available under `scripts/`:
 Generate plots after benchmark CSV files are populated:
 
 ```powershell
+python -m pip install matplotlib
 python .\scripts\plot_results.py --input results\timing_results.csv --output-dir results\plots
 ```
 
@@ -148,7 +149,39 @@ Files:
 
 - `results/timing_results.csv`
 - `results/correctness_results.csv`
+- `results/timing_results_gtx1650_official.csv`
+- `results/correctness_results_gtx1650_official.csv`
+- `results/timing_results_gtx1650_4096_stress.csv`
+- `results/correctness_results_gtx1650_4096_stress.csv`
 - `results/plots/`
+
+## Final GTX 1650 Benchmark Summary
+
+Official benchmark hardware:
+
+- NVIDIA GeForce GTX 1650 with Max-Q Design
+
+Official benchmark matrix:
+
+- image sizes: 512x512, 1024x1024, 2048x2048
+- filter sizes: 3x3, 5x5, 7x7, 11x11
+- repeats: 5
+- warmups: 1
+- versions: all implemented CUDA versions
+
+Official result summary:
+
+- 48 benchmark rows were collected.
+- All CUDA correctness checks passed.
+- Maximum reported absolute error in the CSV is `0.000001`.
+- Best kernel-only speedup is `482.630190x` for `cuda_separable` on 1024x1024 with 11x11 filter.
+- Best total GPU speedup is `15.540952x` for `cuda_separable` on 2048x2048 with 11x11 filter.
+
+Supplemental 4096x4096 stress test:
+
+- 16 benchmark rows were collected.
+- All CUDA correctness checks passed.
+- Best total GPU speedup is `30.922419x` for `cuda_separable` with 11x11 filter.
 
 ## Current Implementation Status
 
@@ -170,6 +203,7 @@ Completed:
 Limitations:
 
 - No OpenCV or image file loading yet.
-- Real benchmark values still need to be collected on a CUDA machine.
-- 4096x4096 should be used only after smoke testing confirms runtime and memory are practical.
+- Benchmarks use synthetic grayscale images and normalized box filters.
+- GTX 1650 Max-Q is the official benchmark GPU, so absolute timings will differ on stronger GPUs.
+- 4096x4096 is included as a supplemental stress test, while the official matrix uses 512/1024/2048 with 5 repeats.
 - Profiling metrics from Nsight tools are not collected automatically yet.

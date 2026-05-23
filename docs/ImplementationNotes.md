@@ -37,14 +37,25 @@ The benchmark executable supports configurable:
 - warm-up count
 - CUDA versions
 
-Default final benchmark matrix:
+Official final benchmark matrix:
 
 - image sizes: 512, 1024, 2048
 - filter sizes: 3, 5, 7, 11
 - repeats: 5
 - warmups: 1
 
-The final benchmark machine is assumed to be an unknown CUDA GPU. A 4096x4096 case should only be added after smoke testing confirms it is practical.
+Official benchmark GPU:
+
+- NVIDIA GeForce GTX 1650 with Max-Q Design
+
+Supplemental stress test:
+
+- image size: 4096
+- filter sizes: 3, 5, 7, 11
+- repeats: 3
+- all CUDA versions
+
+The 4096x4096 case completed successfully and is stored separately from the official 5-repeat matrix.
 
 ## Performance Interpretation Guide
 
@@ -56,9 +67,21 @@ Expected trend:
 4. Constant-memory filters may improve filter coefficient reads, especially when many threads read the same coefficient.
 5. Separable convolution should be strongest for large separable filters because arithmetic drops from `k*k` to `2*k` operations per pixel.
 
+Observed final result highlights:
+
+- All official benchmark rows passed correctness.
+- Best official kernel-only speedup: `482.630190x`, 1024x1024, 11x11, `cuda_separable`.
+- Best official total GPU speedup: `15.540952x`, 2048x2048, 11x11, `cuda_separable`.
+- Supplemental 4096x4096 stress test also passed all correctness checks.
+
+Interpretation:
+
+The separable implementation is the strongest version for large filters because the generated normalized box filter is mathematically separable. Constant-memory filtering helps the direct convolution variants for larger filter sizes, while shared-memory tiling is most useful when global-memory reuse offsets the extra tile-loading overhead. Small cases can show lower total GPU speedup because setup, allocation, and transfer costs dominate.
+
 ## Challenges And Solutions
 
 - Boundary handling can easily diverge between CPU and GPU. Solution: all versions use zero-padding semantics.
 - Shared-memory halo indexing is error-prone. Solution: load a full `(blockDim + 2 * radius)` tile and use CPU comparison for every benchmark case.
 - Timing can be misleading if only one run is measured. Solution: configurable repeats and warmups.
 - GPU transfer overhead affects practical speedup. Solution: CSV includes both kernel-only and total GPU timing.
+- First CUDA calls and small workloads can have high total overhead. Solution: report kernel-only and total timing separately and use larger image sizes for final analysis.
