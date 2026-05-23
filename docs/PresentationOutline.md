@@ -63,7 +63,7 @@ Time: 75 seconds
 Content:
 
 - GPU: NVIDIA GeForce GTX 1650 with Max-Q Design
-- Official matrix: 512, 1024, 2048 images
+- Official matrix: 512, 1024, 2048, 4096 images
 - Filters: 3x3, 5x5, 7x7, 11x11
 - Filter types: box, Gaussian-like, sharpen, Sobel-like
 - Block sizes: 8x8, 16x16, 32x8, 32x16
@@ -83,8 +83,8 @@ Content:
 - CPU output is the reference
 - Metrics: max absolute error and mean absolute error
 - Tolerance: `1e-4`
-- Official benchmark: 1056 rows, 0 failures
-- Stress benchmark: 352 rows, 0 failures
+- Official benchmark: 1408 rows, 0 failures
+- 4096x4096 is included in the official 5-repeat benchmark matrix
 
 Speaker note:
 
@@ -97,8 +97,8 @@ Time: 90 seconds
 
 Content:
 
-- Best kernel-only speedup: 449.182x
-- Case: 2048x2048, 11x11 Gaussian-like, `cuda_separable`, 32x8
+- Best kernel-only speedup: 744.216x
+- Case: 4096x4096, 11x11 Gaussian-like, `cuda_separable`, 32x8
 - Separable convolution wins because it reduces work from `k^2` to `2k`
 
 Visual:
@@ -128,10 +128,10 @@ Time: 90 seconds
 
 Content:
 
-- Best total GPU speedup: 36.267x
-- Case: 2048x2048, 11x11 Sobel-like, `cuda_shared_constant_filter`, 16x16
-- Best direct kernel-only speedup: 345.862x
-- Best new Phase 4 kernel: `cuda_register_tiled`, 159.010x
+- Best total GPU speedup: 56.205x
+- Case: 4096x4096, 11x11 Gaussian-like, `cuda_separable`, 32x8
+- Best direct kernel-only speedup: 432.778x with `cuda_shared_constant_filter`
+- Best new Phase 4 kernel: `cuda_register_tiled`, 409.608x
 
 Visual:
 

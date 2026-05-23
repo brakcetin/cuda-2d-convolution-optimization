@@ -83,13 +83,13 @@ On Windows with Visual Studio generators, the executable is usually created unde
 From the repository root:
 
 ```bash
-./build/convolution_benchmark --image-sizes 512,1024,2048 --filter-sizes 3,5,7,11 --filter-types box,gaussian,sharpen,sobel --block-sizes 8x8,16x16,32x8,32x16 --repeats 5 --warmups 1 --versions all
+./build/convolution_benchmark --image-sizes 512,1024,2048,4096 --filter-sizes 3,5,7,11 --filter-types box,gaussian,sharpen,sobel --block-sizes 8x8,16x16,32x8,32x16 --repeats 5 --warmups 1 --versions all
 ```
 
 On Windows with a Visual Studio generator:
 
 ```powershell
-.\build\Release\convolution_benchmark.exe --image-sizes 512,1024,2048 --filter-sizes 3,5,7,11 --filter-types box,gaussian,sharpen,sobel --block-sizes 8x8,16x16,32x8,32x16 --repeats 5 --warmups 1 --versions all
+.\build\Release\convolution_benchmark.exe --image-sizes 512,1024,2048,4096 --filter-sizes 3,5,7,11 --filter-types box,gaussian,sharpen,sobel --block-sizes 8x8,16x16,32x8,32x16 --repeats 5 --warmups 1 --versions all
 ```
 
 The program prints timing and correctness information for each benchmark case and writes CSV output files under `results/`.
@@ -100,7 +100,7 @@ Helper scripts are available under `scripts/`:
 .\scripts\check_environment.ps1
 .\scripts\configure_release.ps1
 .\scripts\build_release.ps1
-.\scripts\run_benchmarks.ps1 -ImageSizes "512,1024,2048" -FilterSizes "3,5,7,11" -FilterTypes "box,gaussian,sharpen,sobel" -BlockSizes "8x8,16x16,32x8,32x16" -Repeats 5 -Warmups 1 -Versions "all"
+.\scripts\run_benchmarks.ps1 -ImageSizes "512,1024,2048,4096" -FilterSizes "3,5,7,11" -FilterTypes "box,gaussian,sharpen,sobel" -BlockSizes "8x8,16x16,32x8,32x16" -Repeats 5 -Warmups 1 -Versions "all"
 ```
 
 Generate plots after benchmark CSV files are populated:
@@ -117,6 +117,7 @@ Current image sizes:
 - 512x512
 - 1024x1024
 - 2048x2048
+- 4096x4096
 
 Current filter sizes:
 
@@ -188,7 +189,7 @@ Official benchmark hardware:
 
 Official benchmark matrix:
 
-- image sizes: 512x512, 1024x1024, 2048x2048
+- image sizes: 512x512, 1024x1024, 2048x2048, 4096x4096
 - filter sizes: 3x3, 5x5, 7x7, 11x11
 - filter types: box, Gaussian-like, sharpen, Sobel-like
 - block sizes: 8x8, 16x16, 32x8, 32x16
@@ -198,21 +199,19 @@ Official benchmark matrix:
 
 Official result summary:
 
-- 1056 benchmark rows were collected.
+- 1408 benchmark rows were collected.
 - All CUDA correctness checks passed.
-- Maximum reported absolute error in the CSV is below `1e-6`.
-- Best official kernel-only speedup is `449.182387x` for `cuda_separable` on 2048x2048 with 11x11 Gaussian-like filter using a 32x8 block.
-- Best official total GPU speedup is `36.267330x` for `cuda_shared_constant_filter` on 2048x2048 with 11x11 Sobel-like filter using a 16x16 block.
-- Best official direct-convolution kernel-only speedup is `345.862019x` for `cuda_shared_constant_filter` on 1024x1024 with 11x11 sharpen filter using a 32x16 block.
-- Best official new-kernel speedup is `159.009746x` for `cuda_register_tiled` on 1024x1024 with 11x11 sharpen filter using a 32x8 block.
+- Maximum reported absolute error in the CSV is approximately `1e-6`, well below the `1e-4` tolerance.
+- Best official kernel-only speedup is `744.215965x` for `cuda_separable` on 4096x4096 with 11x11 Gaussian-like filter using a 32x8 block.
+- Best official total GPU speedup is `56.205213x` for `cuda_separable` on 4096x4096 with 11x11 Gaussian-like filter using a 32x8 block.
+- Best official direct-convolution kernel-only speedup is `432.778406x` for `cuda_shared_constant_filter` on 4096x4096 with 11x11 Sobel-like filter using a 32x16 block.
+- Best official new-kernel speedup is `409.607974x` for `cuda_register_tiled` on 512x512 with 3x3 Sobel-like filter using a 16x16 block.
 - `cuda_separable` is reported only for box and Gaussian-like filters.
 
-Supplemental 4096x4096 stress test:
+Historical supplemental 4096x4096 stress files:
 
-- 352 benchmark rows were collected.
-- All CUDA correctness checks passed.
-- Best stress-test kernel-only speedup is `474.771679x` for `cuda_separable` with 11x11 box filter using a 32x8 block.
-- Best stress-test total GPU speedup is `36.079514x` for `cuda_separable` with 11x11 Gaussian-like filter using a 16x16 block.
+- The older `*_4096_stress.csv` files are preserved as lower-repeat historical artifacts.
+- The official analysis now uses 4096x4096 in the 5-repeat matrix above.
 
 Report-ready plots:
 
@@ -257,7 +256,7 @@ Limitations:
 - Benchmarks use synthetic grayscale images.
 - Sharpen and Sobel-like filters are centered 3x3 kernels embedded in larger odd filter sizes to preserve the same filter-size benchmark matrix.
 - GTX 1650 Max-Q is the official benchmark GPU, so absolute timings will differ on stronger GPUs.
-- 4096x4096 is included as a supplemental stress test, while the official matrix uses 512/1024/2048 with 5 repeats.
+- 4096x4096 is included in the official benchmark matrix with 5 repeats. Older lower-repeat 4096 stress CSVs are kept only for historical comparison.
 - Best block shape is workload-dependent; the summary CSV records winners instead of assuming one block shape is universally optimal.
 - GPU total time is a per-run estimate built from fixed allocation/copy/free overhead plus each timed kernel sample; warm-up kernels are excluded.
 - Profiling metrics from Nsight tools are not collected automatically yet.

@@ -54,7 +54,7 @@ The benchmark executable supports configurable:
 
 Official final benchmark matrix:
 
-- image sizes: 512, 1024, 2048
+- image sizes: 512, 1024, 2048, 4096
 - filter sizes: 3, 5, 7, 11
 - filter types: box, gaussian, sharpen, sobel
 - block sizes: 8x8, 16x16, 32x8, 32x16
@@ -65,16 +65,10 @@ Official benchmark GPU:
 
 - NVIDIA GeForce GTX 1650 with Max-Q Design
 
-Supplemental stress test:
+Historical supplemental stress files:
 
-- image size: 4096
-- filter sizes: 3, 5, 7, 11
-- filter types: box, gaussian, sharpen, sobel
-- block sizes: 8x8, 16x16, 32x8, 32x16
-- repeats: 3
-- all CUDA versions
-
-The 4096x4096 case completed successfully and is stored separately from the official 5-repeat matrix.
+- Older 4096x4096 lower-repeat CSVs are preserved as historical artifacts.
+- The current official matrix includes 4096x4096 with 5 repeats.
 
 Phase 1 benchmark rigor update:
 
@@ -101,12 +95,11 @@ Expected trend:
 Observed final result highlights:
 
 - All official benchmark rows passed correctness.
-- Phase 4 official matrix contains 1056 rows: 3 image sizes * 4 filter sizes * 4 filter types * 4 block sizes, with six versions for box/Gaussian-like filters and five direct versions for sharpen/Sobel-like filters.
-- Best official kernel-only speedup after Phase 4: `449.182387x`, 2048x2048, 11x11, `gaussian`, `cuda_separable`, 32x8 block.
-- Best official total GPU speedup after Phase 4: `36.267330x`, 2048x2048, 11x11, `sobel`, `cuda_shared_constant_filter`, 16x16 block.
-- Best official direct-convolution kernel-only speedup: `345.862019x`, 1024x1024, 11x11, `sharpen`, `cuda_shared_constant_filter`, 32x16 block.
-- Best official new-kernel speedup: `159.009746x`, 1024x1024, 11x11, `sharpen`, `cuda_register_tiled`, 32x8 block.
-- Supplemental 4096x4096 stress test contains 352 rows and passed all correctness checks. It reached `474.771679x` kernel-only speedup for `cuda_separable` with the 11x11 box filter and `36.079514x` total speedup for `cuda_separable` with the 11x11 Gaussian-like filter.
+- Current official matrix contains 1408 rows: 4 image sizes * 4 filter sizes * 4 filter types * 4 block sizes, with six versions for box/Gaussian-like filters and five direct versions for sharpen/Sobel-like filters.
+- Best official kernel-only speedup: `744.215965x`, 4096x4096, 11x11, `gaussian`, `cuda_separable`, 32x8 block.
+- Best official total GPU speedup: `56.205213x`, 4096x4096, 11x11, `gaussian`, `cuda_separable`, 32x8 block.
+- Best official direct-convolution kernel-only speedup: `432.778406x`, 4096x4096, 11x11, `sobel`, `cuda_shared_constant_filter`, 32x16 block.
+- Best official new-kernel speedup: `409.607974x`, 512x512, 3x3, `sobel`, `cuda_register_tiled`, 16x16 block.
 
 Interpretation:
 

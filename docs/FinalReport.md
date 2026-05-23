@@ -47,43 +47,42 @@ Official benchmark hardware:
 
 Official benchmark matrix:
 
-- Image sizes: 512x512, 1024x1024, 2048x2048
+- Image sizes: 512x512, 1024x1024, 2048x2048, 4096x4096
 - Filter sizes: 3x3, 5x5, 7x7, 11x11
 - Filter types: box, Gaussian-like, sharpen, Sobel-like
 - Block sizes: 8x8, 16x16, 32x8, 32x16
 - Repeats: 5
 - Warmups: 1
-- Rows: 1056
+- Rows: 1408
 - Failed correctness rows: 0
 
-Supplemental stress matrix:
+Historical supplemental files:
 
-- Image size: 4096x4096
-- Repeats: 3
-- Rows: 352
-- Failed correctness rows: 0
+- The older `*_gtx1650_4096_stress.csv` files are preserved as lower-repeat 4096-only artifacts.
+- The official analysis now uses 4096x4096 in the 5-repeat matrix above.
 
 ### Headline Results
 
 | Metric | Result |
 |---|---|
-| Best official kernel-only speedup | 449.182x, 2048x2048, 11x11 Gaussian-like, `cuda_separable`, 32x8 block |
-| Best official total GPU speedup | 36.267x, 2048x2048, 11x11 Sobel-like, `cuda_shared_constant_filter`, 16x16 block |
-| Best direct-convolution kernel-only speedup | 345.862x, 1024x1024, 11x11 sharpen, `cuda_shared_constant_filter`, 32x16 block |
-| Best new Phase 4 kernel speedup | 159.010x, 1024x1024, 11x11 sharpen, `cuda_register_tiled`, 32x8 block |
+| Best official kernel-only speedup | 744.216x, 4096x4096, 11x11 Gaussian-like, `cuda_separable`, 32x8 block |
+| Best official total GPU speedup | 56.205x, 4096x4096, 11x11 Gaussian-like, `cuda_separable`, 32x8 block |
+| Best direct-convolution kernel-only speedup | 432.778x, 4096x4096, 11x11 Sobel-like, `cuda_shared_constant_filter`, 32x16 block |
+| Best new Phase 4 kernel speedup | 409.608x, 512x512, 3x3 Sobel-like, `cuda_register_tiled`, 16x16 block |
 
 ### Representative Cases
 
 | Image | Filter | Type | CPU avg ms | Best kernel-time version / block / speedup | Best total-time version / block / speedup |
 |---|---:|---|---:|---|---|
-| 512x512 | 3x3 | box | 3.378 | `cuda_multi_output` / 32x8 / 66.665x | `cuda_naive_global_memory` / 32x8 / 2.154x |
-| 1024x1024 | 7x7 | sobel | 53.759 | `cuda_shared_constant_filter` / 32x8 / 178.537x | `cuda_register_tiled` / 16x16 / 11.237x |
-| 2048x2048 | 11x11 | gaussian | 482.360 | `cuda_separable` / 32x8 / 449.182x | `cuda_separable` / 16x16 / 32.386x |
-| 2048x2048 | 11x11 | sobel | 490.396 | `cuda_shared_constant_filter` / 32x16 / 286.632x | `cuda_shared_constant_filter` / 16x16 / 36.267x |
+| 512x512 | 3x3 | box | 5.864 | `cuda_register_tiled` / 32x8 / 117.800x | `cuda_shared_memory_tiled` / 8x8 / 2.831x |
+| 1024x1024 | 7x7 | sobel | 60.089 | `cuda_shared_constant_filter` / 32x16 / 146.015x | `cuda_shared_constant_filter` / 32x16 / 13.634x |
+| 2048x2048 | 11x11 | sobel | 609.550 | `cuda_shared_constant_filter` / 32x16 / 355.709x | `cuda_shared_constant_filter` / 32x16 / 47.434x |
+| 4096x4096 | 11x11 | gaussian | 3170.441 | `cuda_separable` / 32x8 / 744.216x | `cuda_separable` / 32x8 / 56.205x |
+| 4096x4096 | 11x11 | sobel | 3063.866 | `cuda_shared_constant_filter` / 32x16 / 432.778x | `cuda_register_tiled` / 32x8 / 46.974x |
 
 The most important observation is that kernel-only speedup and total GPU speedup answer different questions. Kernel-only speedup measures the computational advantage of the CUDA kernel after data is available on the GPU. Total GPU speedup includes allocation and host/device transfer overhead, making it closer to application-level performance.
 
-`cuda_separable` wins the strongest kernel-only cases because it reduces an 11x11 direct convolution from 121 filter operations per pixel to two 11-element 1D passes. However, `cuda_separable` is used only for box and Gaussian-like filters. For direct filters such as sharpen and Sobel-like kernels, `cuda_shared_constant_filter` is the strongest overall method in the official results.
+`cuda_separable` wins the strongest kernel-only and total-time cases because it reduces an 11x11 direct convolution from 121 filter operations per pixel to two 11-element 1D passes. However, `cuda_separable` is used only for box and Gaussian-like filters. For direct filters such as sharpen and Sobel-like kernels, `cuda_shared_constant_filter` remains the strongest kernel-time method in the official results.
 
 ## 5. Academic Background
 
@@ -111,7 +110,7 @@ Interpreting the new multi-output and register-tiled kernels also required care.
 
 The project successfully implements and benchmarks a sequential CPU baseline and multiple CUDA convolution variants. All official CUDA benchmark rows pass correctness verification. The final results show substantial speedups on the GTX 1650, especially for larger images and filters.
 
-The strongest kernel-only result comes from separable convolution on an 11x11 Gaussian-like filter, reaching 449.182x speedup. The strongest total-time result comes from the shared+constant direct convolution version on an 11x11 Sobel-like filter, reaching 36.267x speedup. This shows that both algorithmic structure and memory hierarchy matter.
+The strongest kernel-only result comes from separable convolution on a 4096x4096, 11x11 Gaussian-like filter, reaching 744.216x speedup. The strongest total-time result is the same separable case, reaching 56.205x speedup. The strongest direct-convolution kernel result comes from shared+constant filtering on a 4096x4096, 11x11 Sobel-like filter, reaching 432.778x speedup. This shows that both algorithmic structure and memory hierarchy matter.
 
 Future improvements could include Nsight Compute profiling, automated report table generation, RTX 4070 comparison, RGB image support, and real image input. More advanced convolution methods such as FFT, Winograd, cuDNN, and OpenCV/GpuCV integration remain outside the current project scope.
 
