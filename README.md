@@ -112,6 +112,14 @@ python -m pip install matplotlib
 python .\scripts\plot_results.py --input results\timing_results.csv --output-dir results\plots
 ```
 
+Optional PGM demo path:
+
+```powershell
+.\scripts\run_pgm_demo.ps1 -InputPath "data\sample_input.pgm" -OutputPath "results\demo_output.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
+```
+
+The PGM demo is for presentation/demo use only. It does not replace the official synthetic benchmark matrix.
+
 ## Benchmark Parameters
 
 Current image sizes:
@@ -254,6 +262,7 @@ Completed:
 - Naive CUDA global-memory convolution.
 - CUDA error checking macro.
 - Synthetic image/filter generation.
+- Optional dependency-free PGM image loading/writing demo path.
 - Filter type generation for box, Gaussian-like, sharpen, and Sobel-like filters.
 - Correctness comparison with max and mean absolute error.
 - Configurable benchmark runner with repeat/warm-up counts and selectable versions.
@@ -274,8 +283,8 @@ Completed:
 
 Limitations:
 
-- No OpenCV or image file loading yet.
-- Benchmarks use synthetic grayscale images.
+- No OpenCV dependency is used. The optional real-image demo supports simple grayscale PGM files.
+- Official benchmarks use synthetic grayscale images.
 - Sharpen and Sobel-like filters are centered 3x3 kernels embedded in larger odd filter sizes to preserve the same filter-size benchmark matrix.
 - GTX 1650 Max-Q is the official benchmark GPU, so absolute timings will differ on stronger GPUs.
 - 4096x4096 is included in the official benchmark matrix with 5 repeats. Older lower-repeat 4096 stress CSVs are kept only for historical comparison.

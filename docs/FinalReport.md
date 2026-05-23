@@ -118,7 +118,7 @@ The project successfully implements and benchmarks a sequential CPU baseline and
 
 The strongest kernel-only result comes from separable convolution on a 4096x4096, 11x11 Gaussian-like filter, reaching 744.216x speedup. The strongest total-time result is the same separable case, reaching 56.205x speedup. The strongest direct-convolution kernel result comes from shared+constant filtering on a 4096x4096, 11x11 Sobel-like filter, reaching 432.778x speedup. This shows that both algorithmic structure and memory hierarchy matter.
 
-Future improvements could include Nsight Compute profiling, automated report table generation, RTX 4070 comparison, RGB image support, and real image input. More advanced convolution methods such as FFT, Winograd, cuDNN, and OpenCV/GpuCV integration remain outside the current project scope.
+Future improvements could include Nsight Compute profiling, automated report table generation, RTX 4070 comparison, RGB image support, and richer image-format support. A simple dependency-free PGM path is included for demonstration, while the official benchmark remains synthetic for reproducibility. More advanced convolution methods such as FFT, Winograd, cuDNN, and OpenCV/GpuCV integration remain outside the current project scope.
 
 No graphical UI is required for this project. The course deliverables focus on source code, GitHub repository link, implementation report, benchmark tables/graphs, and a 10-minute presentation. For that reason, the implementation prioritizes reproducible command-line benchmarking and clear CSV/plot outputs.
 

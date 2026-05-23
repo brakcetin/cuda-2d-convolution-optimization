@@ -12,6 +12,7 @@ out/
 *.log
 *.tmp
 *.csv.tmp
+results/*.pgm
 cmake-build-*/
 CMakeFiles/
 CMakeCache.txt

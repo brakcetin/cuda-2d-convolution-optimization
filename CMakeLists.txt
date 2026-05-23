@@ -12,6 +12,7 @@ add_executable(convolution_benchmark
     src/convolution_cpu.cpp
     src/convolution_cuda.cu
     src/filters.cpp
+    src/image_io.cpp
     src/benchmark.cpp
 )
 

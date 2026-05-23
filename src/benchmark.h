@@ -6,7 +6,7 @@
 #include "common.h"
 
 struct BenchmarkOptions {
-    std::vector<int> image_sizes = {512, 1024, 2048};
+    std::vector<int> image_sizes = {512, 1024, 2048, 4096};
     std::vector<int> filter_sizes = {3, 5, 7, 11};
     std::vector<std::string> filter_types = {"box"};
     std::vector<BlockSize> block_sizes = {{16, 16}};

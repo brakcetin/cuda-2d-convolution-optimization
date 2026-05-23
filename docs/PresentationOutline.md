@@ -199,6 +199,12 @@ Use this if a short live demo is requested:
 python .\scripts\plot_results.py --input results\timing_results.csv --output-dir results\plots
 ```
 
+Optional real-image PGM demo:
+
+```powershell
+.\scripts\run_pgm_demo.ps1 -InputPath "data\sample_input.pgm" -OutputPath "results\demo_output.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
+```
+
 Important:
 
 - For the final presentation, show committed official results, not the quick demo CSV produced by the smoke run.

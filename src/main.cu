@@ -1,4 +1,8 @@
 #include "benchmark.h"
+#include "convolution_cpu.h"
+#include "convolution_cuda.cuh"
+#include "filters.h"
+#include "image_io.h"
 
 #include <algorithm>
 #include <cctype>
@@ -9,6 +13,22 @@
 #include <sstream>
 
 namespace {
+
+struct DemoOptions {
+    bool enabled = false;
+    std::string input_path;
+    std::string output_path;
+    std::string filter_type = "sobel";
+    int filter_size = 3;
+    std::string version = "cuda_shared_constant_filter";
+    BlockSize block_size = {16, 16};
+    bool normalize_output = true;
+};
+
+struct ProgramOptions {
+    BenchmarkOptions benchmark;
+    DemoOptions demo;
+};
 
 std::vector<std::string> split_csv_strings(const std::string& value) {
     std::vector<std::string> result;
@@ -53,21 +73,45 @@ std::vector<BlockSize> split_csv_block_sizes(const std::string& value) {
     return result;
 }
 
+BlockSize parse_block_size(const std::string& value) {
+    const std::vector<BlockSize> block_sizes = split_csv_block_sizes(value);
+    if (block_sizes.size() != 1) {
+        throw std::invalid_argument("Expected exactly one block size for demo mode.");
+    }
+    return block_sizes.front();
+}
+
+std::string normalize_name(std::string value) {
+    std::transform(value.begin(), value.end(), value.begin(),
+                   [](unsigned char ch) {
+                       return static_cast<char>(std::tolower(ch));
+                   });
+    return value;
+}
+
 void print_usage(const char* executable_name) {
     std::cout << "Usage: " << executable_name << " [options]\n"
               << "Options:\n"
-              << "  --image-sizes 512,1024,2048\n"
+              << "  --image-sizes 512,1024,2048,4096\n"
               << "  --filter-sizes 3,5,7,11\n"
               << "  --filter-types box,gaussian,sharpen,sobel\n"
               << "  --block-sizes 8x8,16x16,32x8,32x16\n"
               << "  --repeats 5\n"
               << "  --warmups 1\n"
               << "  --versions all\n"
+              << "\nDemo mode:\n"
+              << "  --demo-input input.pgm\n"
+              << "  --demo-output output.pgm\n"
+              << "  --demo-filter-type sobel\n"
+              << "  --demo-filter-size 3\n"
+              << "  --demo-version cuda_shared_constant_filter\n"
+              << "  --demo-block-size 16x16\n"
+              << "  --demo-normalize-output true\n"
               << "  --help\n";
 }
 
-BenchmarkOptions parse_arguments(int argc, char** argv) {
-    BenchmarkOptions options;
+ProgramOptions parse_arguments(int argc, char** argv) {
+    ProgramOptions options;
 
     for (int i = 1; i < argc; ++i) {
         const std::string argument = argv[i];
@@ -83,46 +127,179 @@ BenchmarkOptions parse_arguments(int argc, char** argv) {
 
         const std::string value = argv[++i];
         if (argument == "--image-sizes") {
-            options.image_sizes = split_csv_ints(value);
+            options.benchmark.image_sizes = split_csv_ints(value);
         } else if (argument == "--filter-sizes") {
-            options.filter_sizes = split_csv_ints(value);
+            options.benchmark.filter_sizes = split_csv_ints(value);
         } else if (argument == "--filter-types") {
-            options.filter_types = split_csv_strings(value);
+            options.benchmark.filter_types = split_csv_strings(value);
         } else if (argument == "--block-sizes") {
-            options.block_sizes = split_csv_block_sizes(value);
+            options.benchmark.block_sizes = split_csv_block_sizes(value);
         } else if (argument == "--repeats") {
-            options.repeat_count = std::stoi(value);
+            options.benchmark.repeat_count = std::stoi(value);
         } else if (argument == "--warmups") {
-            options.warmup_count = std::stoi(value);
+            options.benchmark.warmup_count = std::stoi(value);
         } else if (argument == "--versions") {
-            options.versions = split_csv_strings(value);
+            options.benchmark.versions = split_csv_strings(value);
+        } else if (argument == "--demo-input") {
+            options.demo.enabled = true;
+            options.demo.input_path = value;
+        } else if (argument == "--demo-output") {
+            options.demo.enabled = true;
+            options.demo.output_path = value;
+        } else if (argument == "--demo-filter-type") {
+            options.demo.enabled = true;
+            options.demo.filter_type = value;
+        } else if (argument == "--demo-filter-size") {
+            options.demo.enabled = true;
+            options.demo.filter_size = std::stoi(value);
+        } else if (argument == "--demo-version") {
+            options.demo.enabled = true;
+            options.demo.version = value;
+        } else if (argument == "--demo-block-size") {
+            options.demo.enabled = true;
+            options.demo.block_size = parse_block_size(value);
+        } else if (argument == "--demo-normalize-output") {
+            options.demo.enabled = true;
+            const std::string normalized = normalize_name(value);
+            options.demo.normalize_output = normalized == "true" || normalized == "1" ||
+                                            normalized == "yes";
         } else {
             throw std::invalid_argument("Unknown argument: " + argument);
         }
     }
 
-    if (options.image_sizes.empty() || options.filter_sizes.empty() ||
-        options.filter_types.empty() || options.block_sizes.empty() || options.versions.empty()) {
+    if (options.demo.enabled) {
+        if (options.demo.input_path.empty() || options.demo.output_path.empty()) {
+            throw std::invalid_argument("Demo mode requires --demo-input and --demo-output.");
+        }
+        return options;
+    }
+
+    if (options.benchmark.image_sizes.empty() || options.benchmark.filter_sizes.empty() ||
+        options.benchmark.filter_types.empty() || options.benchmark.block_sizes.empty() ||
+        options.benchmark.versions.empty()) {
         throw std::invalid_argument("Image sizes, filter sizes, filter types, block sizes, and versions must not be empty.");
     }
-    if (options.repeat_count <= 0) {
+    if (options.benchmark.repeat_count <= 0) {
         throw std::invalid_argument("Repeat count must be positive.");
     }
-    if (options.warmup_count < 0) {
+    if (options.benchmark.warmup_count < 0) {
         throw std::invalid_argument("Warm-up count must not be negative.");
     }
 
     return options;
 }
 
+void run_demo(const DemoOptions& options) {
+    const GrayscaleImage image = read_pgm_image(options.input_path);
+    const FilterSpec filter = generate_filter_spec(options.filter_type, options.filter_size);
+    const std::string version = normalize_name(options.version);
+
+    std::vector<float> cpu_output;
+    if (version == "cpu" || version == "cpu_sequential") {
+        if (filter.separable && filter.type != "sharpen" && filter.type != "sobel") {
+            convolution_cpu_separable(image.pixels,
+                                      cpu_output,
+                                      image.width,
+                                      image.height,
+                                      filter.filter_1d,
+                                      options.filter_size);
+        } else {
+            convolution_cpu(image.pixels,
+                            cpu_output,
+                            image.width,
+                            image.height,
+                            filter.filter_2d,
+                            options.filter_size);
+        }
+        write_pgm_image(options.output_path,
+                        cpu_output,
+                        image.width,
+                        image.height,
+                        options.normalize_output);
+        std::cout << "CPU demo output written to " << options.output_path << '\n';
+        return;
+    }
+
+    std::vector<float> reference;
+    std::vector<float> gpu_output;
+    CudaTiming timing;
+    convolution_cpu(image.pixels,
+                    reference,
+                    image.width,
+                    image.height,
+                    filter.filter_2d,
+                    options.filter_size);
+
+    if (version == "naive" || version == "cuda_naive_global_memory") {
+        convolution_cuda_naive(image.pixels, gpu_output, image.width, image.height,
+                               filter.filter_2d, options.filter_size,
+                               options.block_size.width, options.block_size.height, 1, 1, timing);
+    } else if (version == "shared" || version == "cuda_shared_memory_tiled") {
+        convolution_cuda_shared_memory_tiled(image.pixels, gpu_output, image.width, image.height,
+                                             filter.filter_2d, options.filter_size,
+                                             options.block_size.width, options.block_size.height, 1, 1, timing);
+    } else if (version == "constant" || version == "cuda_shared_constant_filter") {
+        convolution_cuda_shared_constant_filter(image.pixels, gpu_output, image.width, image.height,
+                                                filter.filter_2d, options.filter_size,
+                                                options.block_size.width, options.block_size.height, 1, 1, timing);
+    } else if (version == "multi" || version == "cuda_multi_output") {
+        convolution_cuda_multi_output(image.pixels, gpu_output, image.width, image.height,
+                                      filter.filter_2d, options.filter_size,
+                                      options.block_size.width, options.block_size.height, 1, 1, timing);
+    } else if (version == "register" || version == "cuda_register_tiled") {
+        convolution_cuda_register_tiled(image.pixels, gpu_output, image.width, image.height,
+                                        filter.filter_2d, options.filter_size,
+                                        options.block_size.width, options.block_size.height, 1, 1, timing);
+    } else if (version == "separable" || version == "cuda_separable") {
+        if (!filter.separable) {
+            throw std::invalid_argument("Demo version cuda_separable requires a separable filter type.");
+        }
+        convolution_cpu_separable(image.pixels,
+                                  reference,
+                                  image.width,
+                                  image.height,
+                                  filter.filter_1d,
+                                  options.filter_size);
+        convolution_cuda_separable(image.pixels, gpu_output, image.width, image.height,
+                                   filter.filter_1d, options.filter_size,
+                                   options.block_size.width, options.block_size.height, 1, 1, timing);
+    } else {
+        throw std::invalid_argument("Unknown demo version: " + options.version);
+    }
+
+    const CorrectnessMetrics metrics =
+        compare_outputs(reference, gpu_output, kCorrectnessTolerance);
+    write_pgm_image(options.output_path,
+                    gpu_output,
+                    image.width,
+                    image.height,
+                    options.normalize_output);
+
+    std::cout << "Demo output written to " << options.output_path << '\n'
+              << "Version: " << options.version << '\n'
+              << "Image: " << image.width << "x" << image.height << '\n'
+              << "Filter: " << filter.type << " " << options.filter_size << "x"
+              << options.filter_size << '\n'
+              << "Kernel time ms: " << timing.kernel_time_ms << '\n'
+              << "Max abs error: " << metrics.max_abs_error << '\n'
+              << "Mean abs error: " << metrics.mean_abs_error << '\n'
+              << "Passed: " << (metrics.passed ? "true" : "false") << '\n';
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
     try {
-        const BenchmarkOptions options = parse_arguments(argc, argv);
+        const ProgramOptions options = parse_arguments(argc, argv);
+        if (options.demo.enabled) {
+            run_demo(options.demo);
+            return 0;
+        }
+
         std::filesystem::create_directories("results");
 
-        const std::vector<BenchmarkResult> results = run_benchmarks(options);
+        const std::vector<BenchmarkResult> results = run_benchmarks(options.benchmark);
         write_results_csv("results/timing_results.csv", results);
         write_results_csv("results/correctness_results.csv", results);
         write_best_versions_csv("results/summary_best_versions.csv", results);

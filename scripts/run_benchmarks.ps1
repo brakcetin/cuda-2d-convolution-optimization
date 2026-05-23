@@ -1,5 +1,5 @@
 param(
-    [string]$ImageSizes = "512,1024,2048",
+    [string]$ImageSizes = "512,1024,2048,4096",
     [string]$FilterSizes = "3,5,7,11",
     [string]$FilterTypes = "box",
     [string]$BlockSizes = "16x16",
