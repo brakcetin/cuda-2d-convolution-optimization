@@ -22,12 +22,14 @@ struct BenchmarkCase {
     int image_width = 0;
     int image_height = 0;
     int filter_size = 0;
+    std::string filter_type;
 };
 
 struct BenchmarkResult {
     int image_width = 0;
     int image_height = 0;
     int filter_size = 0;
+    std::string filter_type;
     std::string version;
     std::string device_name;
     int repeat_count = 0;

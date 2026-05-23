@@ -467,6 +467,7 @@ void convolution_cuda_separable(const std::vector<float>& input,
                                 std::vector<float>& output,
                                 int width,
                                 int height,
+                                const std::vector<float>& filter_1d,
                                 int filter_size,
                                 int warmup_count,
                                 int repeat_count,
@@ -477,6 +478,9 @@ void convolution_cuda_separable(const std::vector<float>& input,
     if (input.size() != static_cast<size_t>(width * height)) {
         throw std::invalid_argument("Input image size does not match width * height.");
     }
+    if (filter_1d.size() != static_cast<size_t>(filter_size)) {
+        throw std::invalid_argument("1D filter size does not match filter_size.");
+    }
 
     output.assign(static_cast<size_t>(width * height), 0.0f);
     timing = {};
@@ -485,8 +489,6 @@ void convolution_cuda_separable(const std::vector<float>& input,
 
     const size_t image_bytes = input.size() * sizeof(float);
     const size_t filter_bytes = static_cast<size_t>(filter_size) * sizeof(float);
-    const std::vector<float> filter_1d(static_cast<size_t>(filter_size),
-                                       1.0f / static_cast<float>(filter_size));
 
     float* d_input = nullptr;
     float* d_intermediate = nullptr;

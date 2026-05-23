@@ -31,8 +31,17 @@ def group_by(rows: list[dict[str, str]], key: str) -> dict[str, list[dict[str, s
     return grouped
 
 
+def default_filter_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    if rows and "filter_type" in rows[0]:
+        box_rows = [row for row in rows if row["filter_type"] == "box"]
+        if box_rows:
+            return box_rows
+    return rows
+
+
 def plot_speedup_by_version(rows: list[dict[str, str]], output_dir: Path) -> None:
     plt = require_matplotlib()
+    rows = default_filter_rows(rows)
     grouped = group_by(rows, "version")
 
     plt.figure(figsize=(10, 6))
@@ -54,6 +63,7 @@ def plot_speedup_by_version(rows: list[dict[str, str]], output_dir: Path) -> Non
 
 def plot_time_by_image_size(rows: list[dict[str, str]], output_dir: Path) -> None:
     plt = require_matplotlib()
+    rows = default_filter_rows(rows)
     grouped = group_by(rows, "version")
 
     plt.figure(figsize=(10, 6))
@@ -88,6 +98,7 @@ def plot_time_by_image_size(rows: list[dict[str, str]], output_dir: Path) -> Non
 
 def plot_speedup_by_filter_size(rows: list[dict[str, str]], output_dir: Path) -> None:
     plt = require_matplotlib()
+    rows = default_filter_rows(rows)
     grouped = group_by(rows, "version")
 
     plt.figure(figsize=(10, 6))
@@ -113,6 +124,7 @@ def plot_speedup_by_filter_size(rows: list[dict[str, str]], output_dir: Path) ->
 
 def plot_kernel_vs_total(rows: list[dict[str, str]], output_dir: Path) -> None:
     plt = require_matplotlib()
+    rows = default_filter_rows(rows)
     selected = [row for row in rows if row["filter_size"] == "3" and row["image_width"] == "1024"]
     selected = sorted(selected, key=lambda row: row["version"])
     if not selected:
@@ -135,6 +147,38 @@ def plot_kernel_vs_total(rows: list[dict[str, str]], output_dir: Path) -> None:
     plt.close()
 
 
+def plot_speedup_by_filter_type(rows: list[dict[str, str]], output_dir: Path) -> None:
+    if not rows or "filter_type" not in rows[0]:
+        return
+
+    plt = require_matplotlib()
+    selected = [
+        row
+        for row in rows
+        if row["image_width"] == "1024" and row["filter_size"] == "7"
+    ]
+    selected = sorted(selected, key=lambda row: (row["version"], row["filter_type"]))
+    if not selected:
+        return
+
+    grouped = group_by(selected, "version")
+    filter_types = sorted({row["filter_type"] for row in selected})
+
+    plt.figure(figsize=(10, 6))
+    for version, version_rows in sorted(grouped.items()):
+        by_type = {row["filter_type"]: float(row["kernel_speedup"]) for row in version_rows}
+        values = [by_type.get(filter_type, 0.0) for filter_type in filter_types]
+        plt.plot(filter_types, values, marker="o", label=version)
+
+    plt.ylabel("Kernel speedup vs CPU")
+    plt.xlabel("Filter type")
+    plt.title("Speedup by Filter Type, 1024x1024 7x7")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(output_dir / "speedup_by_filter_type_1024_7x7.png", dpi=160)
+    plt.close()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate benchmark plots.")
     parser.add_argument("--input", default="results/timing_results.csv", type=Path)
@@ -150,6 +194,7 @@ def main() -> None:
     plot_time_by_image_size(rows, args.output_dir)
     plot_speedup_by_filter_size(rows, args.output_dir)
     plot_kernel_vs_total(rows, args.output_dir)
+    plot_speedup_by_filter_type(rows, args.output_dir)
     print(f"Plots written to {args.output_dir}")
 
 

@@ -40,6 +40,7 @@ void print_usage(const char* executable_name) {
               << "Options:\n"
               << "  --image-sizes 512,1024,2048\n"
               << "  --filter-sizes 3,5,7,11\n"
+              << "  --filter-types box,gaussian,sharpen,sobel\n"
               << "  --repeats 5\n"
               << "  --warmups 1\n"
               << "  --versions all\n"
@@ -66,6 +67,8 @@ BenchmarkOptions parse_arguments(int argc, char** argv) {
             options.image_sizes = split_csv_ints(value);
         } else if (argument == "--filter-sizes") {
             options.filter_sizes = split_csv_ints(value);
+        } else if (argument == "--filter-types") {
+            options.filter_types = split_csv_strings(value);
         } else if (argument == "--repeats") {
             options.repeat_count = std::stoi(value);
         } else if (argument == "--warmups") {
@@ -77,8 +80,9 @@ BenchmarkOptions parse_arguments(int argc, char** argv) {
         }
     }
 
-    if (options.image_sizes.empty() || options.filter_sizes.empty() || options.versions.empty()) {
-        throw std::invalid_argument("Image sizes, filter sizes, and versions must not be empty.");
+    if (options.image_sizes.empty() || options.filter_sizes.empty() ||
+        options.filter_types.empty() || options.versions.empty()) {
+        throw std::invalid_argument("Image sizes, filter sizes, filter types, and versions must not be empty.");
     }
     if (options.repeat_count <= 0) {
         throw std::invalid_argument("Repeat count must be positive.");

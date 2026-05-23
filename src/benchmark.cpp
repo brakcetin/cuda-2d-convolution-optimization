@@ -77,6 +77,7 @@ BenchmarkResult make_result(const BenchmarkCase& benchmark_case,
     result.image_width = benchmark_case.image_width;
     result.image_height = benchmark_case.image_height;
     result.filter_size = benchmark_case.filter_size;
+    result.filter_type = benchmark_case.filter_type;
     result.version = version;
     result.device_name = device_name;
     result.repeat_count = repeat_count;
@@ -117,6 +118,7 @@ void print_result(const BenchmarkResult& result) {
               << result.image_height
               << ", filter " << result.filter_size << "x"
               << result.filter_size
+              << " " << result.filter_type
               << ", version " << result.version
               << ": CPU avg " << result.cpu_time_ms << " ms (stddev "
               << result.cpu_stddev_time_ms << "), CUDA kernel avg "
@@ -190,7 +192,9 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {
     std::vector<BenchmarkCase> cases;
     for (const int image_size : options.image_sizes) {
         for (const int filter_size : options.filter_sizes) {
-            cases.push_back({image_size, image_size, filter_size});
+            for (const std::string& filter_type : options.filter_types) {
+                cases.push_back({image_size, image_size, filter_size, filter_type});
+            }
         }
     }
 
@@ -211,14 +215,15 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {
             benchmark_case.image_width,
             benchmark_case.image_height,
             seed);
-        const std::vector<float> filter = generate_normalized_filter(benchmark_case.filter_size);
+        const FilterSpec filter_spec = generate_filter_spec(benchmark_case.filter_type,
+                                                            benchmark_case.filter_size);
 
         std::vector<float> cpu_output;
         const TimingStats cpu_stats = run_cpu_repeats(input,
                                                       cpu_output,
                                                       benchmark_case.image_width,
                                                       benchmark_case.image_height,
-                                                      filter,
+                                                      filter_spec.filter_2d,
                                                       benchmark_case.filter_size,
                                                       options.repeat_count);
 
@@ -229,7 +234,7 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {
                                    gpu_output,
                                    benchmark_case.image_width,
                                    benchmark_case.image_height,
-                                   filter,
+                                   filter_spec.filter_2d,
                                    benchmark_case.filter_size,
                                    options.warmup_count,
                                    options.repeat_count,
@@ -258,7 +263,7 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {
                                                  gpu_output,
                                                  benchmark_case.image_width,
                                                  benchmark_case.image_height,
-                                                 filter,
+                                                 filter_spec.filter_2d,
                                                  benchmark_case.filter_size,
                                                  options.warmup_count,
                                                  options.repeat_count,
@@ -287,7 +292,7 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {
                                                     gpu_output,
                                                     benchmark_case.image_width,
                                                     benchmark_case.image_height,
-                                                    filter,
+                                                    filter_spec.filter_2d,
                                                     benchmark_case.filter_size,
                                                     options.warmup_count,
                                                     options.repeat_count,
@@ -309,20 +314,30 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {
             print_result(result);
         }
 
-        if (has_version_alias(requested_versions, "separable", "cuda_separable")) {
+        if (filter_spec.separable &&
+            has_version_alias(requested_versions, "separable", "cuda_separable")) {
+            std::vector<float> cpu_separable_output;
+            convolution_cpu_separable(input,
+                                      cpu_separable_output,
+                                      benchmark_case.image_width,
+                                      benchmark_case.image_height,
+                                      filter_spec.filter_1d,
+                                      benchmark_case.filter_size);
+
             std::vector<float> gpu_output;
             CudaTiming gpu_timing;
             convolution_cuda_separable(input,
                                        gpu_output,
                                        benchmark_case.image_width,
                                        benchmark_case.image_height,
+                                       filter_spec.filter_1d,
                                        benchmark_case.filter_size,
                                        options.warmup_count,
                                        options.repeat_count,
                                        gpu_timing);
 
             const CorrectnessMetrics correctness = compare_outputs(
-                cpu_output,
+                cpu_separable_output,
                 gpu_output,
                 kCorrectnessTolerance);
 
@@ -348,7 +363,7 @@ void write_results_csv(const std::string& path,
         throw std::runtime_error("Failed to open CSV output file: " + path);
     }
 
-    file << "image_width,image_height,filter_size,version,device_name,repeat_count,"
+    file << "image_width,image_height,filter_size,filter_type,version,device_name,repeat_count,"
          << "estimated_operations,cpu_time_ms,cpu_min_time_ms,cpu_max_time_ms,"
          << "cpu_stddev_time_ms,gpu_kernel_time_ms,gpu_kernel_min_time_ms,"
          << "gpu_kernel_max_time_ms,gpu_kernel_stddev_time_ms,gpu_total_time_ms,"
@@ -363,6 +378,7 @@ void write_results_csv(const std::string& path,
         file << result.image_width << ','
              << result.image_height << ','
              << result.filter_size << ','
+             << result.filter_type << ','
              << result.version << ','
              << '"' << result.device_name << '"' << ','
              << result.repeat_count << ','
@@ -401,9 +417,25 @@ void write_best_versions_csv(const std::string& path,
         bool all_passed = true;
     };
 
-    std::map<std::pair<int, int>, BestVersions> grouped;
+    struct SummaryKey {
+        int image_width = 0;
+        int filter_size = 0;
+        std::string filter_type;
+
+        bool operator<(const SummaryKey& other) const {
+            if (image_width != other.image_width) {
+                return image_width < other.image_width;
+            }
+            if (filter_size != other.filter_size) {
+                return filter_size < other.filter_size;
+            }
+            return filter_type < other.filter_type;
+        }
+    };
+
+    std::map<SummaryKey, BestVersions> grouped;
     for (const BenchmarkResult& result : results) {
-        auto& best = grouped[{result.image_width, result.filter_size}];
+        auto& best = grouped[{result.image_width, result.filter_size, result.filter_type}];
         best.all_passed = best.all_passed && result.passed;
 
         if (result.passed &&
@@ -423,14 +455,14 @@ void write_best_versions_csv(const std::string& path,
         throw std::runtime_error("Failed to open CSV output file: " + path);
     }
 
-    file << "image_width,image_height,filter_size,best_kernel_time_version,"
+    file << "image_width,image_height,filter_size,filter_type,best_kernel_time_version,"
          << "best_total_time_version,best_kernel_speedup,best_total_speedup,"
          << "correctness_status\n";
     file << std::fixed << std::setprecision(6);
 
     for (const auto& [key, best] : grouped) {
-        const int image_width = key.first;
-        const int filter_size = key.second;
+        const int image_width = key.image_width;
+        const int filter_size = key.filter_size;
         const BenchmarkResult* representative = best.kernel != nullptr
                                                     ? best.kernel
                                                     : best.total;
@@ -441,6 +473,7 @@ void write_best_versions_csv(const std::string& path,
         file << image_width << ','
              << image_height << ','
              << filter_size << ','
+             << key.filter_type << ','
              << (best.kernel != nullptr ? best.kernel->version : "none") << ','
              << (best.total != nullptr ? best.total->version : "none") << ','
              << (best.kernel != nullptr ? best.kernel->kernel_speedup : 0.0) << ','

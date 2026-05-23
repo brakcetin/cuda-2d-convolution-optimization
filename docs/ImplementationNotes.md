@@ -13,7 +13,18 @@ Implemented versions:
 - `cuda_naive_global_memory`: one CUDA thread computes one output pixel; input image and filter are read from global memory.
 - `cuda_shared_memory_tiled`: each block loads a tile plus halo into dynamic shared memory, then computes output pixels from shared memory.
 - `cuda_shared_constant_filter`: input tile is loaded into shared memory and filter coefficients are read from CUDA constant memory.
-- `cuda_separable`: for the generated normalized box filter, performs horizontal 1D convolution followed by vertical 1D convolution.
+- `cuda_separable`: for generated separable filters, performs horizontal 1D convolution followed by vertical 1D convolution.
+
+## Filter Types
+
+Implemented synthetic filters:
+
+- `box`: normalized square box filter. This is separable.
+- `gaussian`: Gaussian-like normalized filter generated from a 1D Gaussian-style vector and outer product. This is separable.
+- `sharpen`: canonical 3x3 sharpen kernel centered inside the selected odd filter size.
+- `sobel`: canonical Sobel-X-like 3x3 edge filter centered inside the selected odd filter size.
+
+The direct CPU and CUDA versions run all filter types. The separable CPU and CUDA paths run only `box` and `gaussian`, because sharpen and Sobel-like filters are not treated as separable in this project phase.
 
 ## Correctness Strategy
 
@@ -25,7 +36,7 @@ Metrics:
 - Mean absolute error.
 - Pass/fail with tolerance `1e-4`.
 
-The separable version is valid for the current normalized box filters because a box filter is separable.
+The separable version is valid for the current box and Gaussian-like filters because both are generated from 1D filters. Sharpen and Sobel-like filters are compared only with direct convolution variants.
 
 ## Benchmark Strategy
 
@@ -41,6 +52,7 @@ Official final benchmark matrix:
 
 - image sizes: 512, 1024, 2048
 - filter sizes: 3, 5, 7, 11
+- filter types: box, gaussian, sharpen, sobel
 - repeats: 5
 - warmups: 1
 
@@ -65,6 +77,7 @@ Phase 1 benchmark rigor update:
 - GPU time breakdown is recorded for allocation, host-to-device copy, kernel, device-to-host copy, and free time.
 - CSV output includes estimated operation count, CPU GFLOP/s, and CUDA kernel GFLOP/s.
 - `results/summary_best_versions.csv` records the best kernel-time and best total-time version for each image/filter case.
+- Phase 2 adds `filter_type` to all benchmark CSVs and groups best-version summaries by image size, filter size, and filter type.
 
 ## Performance Interpretation Guide
 
@@ -79,13 +92,13 @@ Expected trend:
 Observed final result highlights:
 
 - All official benchmark rows passed correctness.
-- Best official kernel-only speedup after the Phase 1 timing update: `329.099377x`, 2048x2048, 11x11, `cuda_separable`.
-- Best official total GPU speedup after the Phase 1 timing update: `30.094411x`, 2048x2048, 11x11, `cuda_shared_constant_filter`.
-- Supplemental 4096x4096 stress test also passed all correctness checks and reached `35.031400x` total speedup for `cuda_separable` with the 11x11 filter.
+- Best official kernel-only speedup after the Phase 2 filter update: `311.912111x`, 2048x2048, 11x11, `gaussian`, `cuda_separable`.
+- Best official total GPU speedup after the Phase 2 filter update: `30.644802x`, 2048x2048, 11x11, `box`, `cuda_separable`.
+- Supplemental 4096x4096 stress test also passed all correctness checks and reached `37.275758x` total speedup for `cuda_separable` with the 11x11 Gaussian-like filter.
 
 Interpretation:
 
-The separable implementation is the strongest kernel-time version for large filters because the generated normalized box filter is mathematically separable. Constant-memory filtering helps the direct convolution variants for larger filter sizes and can win total time when its kernel improvement offsets transfer and allocation overhead. Shared-memory tiling is useful when global-memory reuse offsets the extra tile-loading overhead. Small cases can show lower total GPU speedup because setup, allocation, and transfer costs dominate.
+The separable implementation is the strongest kernel-time version for large box and Gaussian-like filters because those filters are mathematically separable. It is intentionally not reported for sharpen or Sobel-like filters. Constant-memory filtering helps the direct convolution variants for larger filter sizes and is often the strongest direct-convolution option for sharpen and Sobel-like filters. Shared-memory tiling is useful when global-memory reuse offsets the extra tile-loading overhead. Small cases can show lower total GPU speedup because setup, allocation, and transfer costs dominate.
 
 The Phase 1 standard-deviation columns expose run-to-run stability. For example, the 2048x2048 11x11 shared-memory tiled run showed noticeably higher kernel variance than the other 11x11 direct variants. This is useful report evidence: a single average can hide benchmark instability, so min/max/stddev should be kept in the final tables or appendix.
 

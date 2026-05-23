@@ -1,6 +1,7 @@
 param(
     [string]$ImageSizes = "512,1024,2048",
     [string]$FilterSizes = "3,5,7,11",
+    [string]$FilterTypes = "box",
     [int]$Repeats = 5,
     [int]$Warmups = 1,
     [string]$Versions = "all"
@@ -27,6 +28,7 @@ if (-not $Executable) {
 & $Executable `
     --image-sizes $ImageSizes `
     --filter-sizes $FilterSizes `
+    --filter-types $FilterTypes `
     --repeats $Repeats `
     --warmups $Warmups `
     --versions $Versions
