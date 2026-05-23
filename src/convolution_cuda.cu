@@ -2,8 +2,11 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdlib>
+#include <numeric>
 #include <stdexcept>
+#include <vector>
 
 namespace {
 
@@ -18,6 +21,33 @@ enum class KernelKind {
     SharedMemoryTiled,
     SharedConstantFilter,
 };
+
+TimingStats compute_timing_stats(const std::vector<double>& samples) {
+    if (samples.empty()) {
+        return {};
+    }
+
+    TimingStats stats;
+    stats.min_ms = *std::min_element(samples.begin(), samples.end());
+    stats.max_ms = *std::max_element(samples.begin(), samples.end());
+    stats.average_ms = std::accumulate(samples.begin(), samples.end(), 0.0) /
+                       static_cast<double>(samples.size());
+
+    double variance = 0.0;
+    for (const double sample : samples) {
+        const double difference = sample - stats.average_ms;
+        variance += difference * difference;
+    }
+    variance /= static_cast<double>(samples.size());
+    stats.stddev_ms = std::sqrt(variance);
+
+    return stats;
+}
+
+double elapsed_ms(std::chrono::high_resolution_clock::time_point start,
+                  std::chrono::high_resolution_clock::time_point stop) {
+    return std::chrono::duration<double, std::milli>(stop - start).count();
+}
 
 __global__ void convolution_naive_kernel(const float* input,
                                          float* output,
@@ -281,18 +311,22 @@ void run_convolution(KernelKind kind,
     cudaEvent_t start = nullptr;
     cudaEvent_t stop = nullptr;
 
-    const auto total_start = std::chrono::high_resolution_clock::now();
-
+    auto phase_start = std::chrono::high_resolution_clock::now();
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_input), image_bytes));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_output), image_bytes));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_filter), filter_bytes));
+    auto phase_stop = std::chrono::high_resolution_clock::now();
+    timing.allocation_time_ms = elapsed_ms(phase_start, phase_stop);
 
+    phase_start = std::chrono::high_resolution_clock::now();
     CUDA_CHECK(cudaMemcpy(d_input, input.data(), image_bytes, cudaMemcpyHostToDevice));
     if (kind == KernelKind::SharedConstantFilter) {
         CUDA_CHECK(cudaMemcpyToSymbol(c_filter, filter.data(), filter_bytes));
     } else {
         CUDA_CHECK(cudaMemcpy(d_filter, filter.data(), filter_bytes, cudaMemcpyHostToDevice));
     }
+    phase_stop = std::chrono::high_resolution_clock::now();
+    timing.host_to_device_time_ms = elapsed_ms(phase_start, phase_stop);
 
     for (int warmup = 0; warmup < warmup_count; ++warmup) {
         launch_kernel(kind, d_input, d_output, width, height, d_filter, filter_size);
@@ -302,27 +336,49 @@ void run_convolution(KernelKind kind,
 
     CUDA_CHECK(cudaEventCreate(&start));
     CUDA_CHECK(cudaEventCreate(&stop));
-    CUDA_CHECK(cudaEventRecord(start));
+    std::vector<double> kernel_samples;
+    kernel_samples.reserve(static_cast<size_t>(repeat_count));
     for (int repeat = 0; repeat < repeat_count; ++repeat) {
+        CUDA_CHECK(cudaEventRecord(start));
         launch_kernel(kind, d_input, d_output, width, height, d_filter, filter_size);
         CUDA_CHECK(cudaGetLastError());
-    }
-    CUDA_CHECK(cudaEventRecord(stop));
-    CUDA_CHECK(cudaEventSynchronize(stop));
-    CUDA_CHECK(cudaEventElapsedTime(&timing.kernel_time_ms, start, stop));
-    timing.kernel_time_ms /= static_cast<float>(repeat_count);
+        CUDA_CHECK(cudaEventRecord(stop));
+        CUDA_CHECK(cudaEventSynchronize(stop));
 
+        float sample_ms = 0.0f;
+        CUDA_CHECK(cudaEventElapsedTime(&sample_ms, start, stop));
+        kernel_samples.push_back(static_cast<double>(sample_ms));
+    }
+    timing.kernel_stats = compute_timing_stats(kernel_samples);
+    timing.kernel_time_ms = timing.kernel_stats.average_ms;
+
+    phase_start = std::chrono::high_resolution_clock::now();
     CUDA_CHECK(cudaMemcpy(output.data(), d_output, image_bytes, cudaMemcpyDeviceToHost));
+    phase_stop = std::chrono::high_resolution_clock::now();
+    timing.device_to_host_time_ms = elapsed_ms(phase_start, phase_stop);
 
     CUDA_CHECK(cudaEventDestroy(start));
     CUDA_CHECK(cudaEventDestroy(stop));
+
+    phase_start = std::chrono::high_resolution_clock::now();
     CUDA_CHECK(cudaFree(d_filter));
     CUDA_CHECK(cudaFree(d_output));
     CUDA_CHECK(cudaFree(d_input));
+    phase_stop = std::chrono::high_resolution_clock::now();
+    timing.free_time_ms = elapsed_ms(phase_start, phase_stop);
 
-    const auto total_stop = std::chrono::high_resolution_clock::now();
-    timing.total_time_ms = std::chrono::duration<double, std::milli>(
-        total_stop - total_start).count();
+    const double fixed_overhead_ms = timing.allocation_time_ms +
+                                     timing.host_to_device_time_ms +
+                                     timing.device_to_host_time_ms +
+                                     timing.free_time_ms;
+    std::vector<double> total_samples;
+    total_samples.reserve(kernel_samples.size());
+    for (const double kernel_sample : kernel_samples) {
+        total_samples.push_back(fixed_overhead_ms + kernel_sample);
+    }
+
+    timing.total_stats = compute_timing_stats(total_samples);
+    timing.total_time_ms = timing.total_stats.average_ms;
 }
 
 void launch_separable_kernels(const float* d_input,
@@ -439,15 +495,19 @@ void convolution_cuda_separable(const std::vector<float>& input,
     cudaEvent_t start = nullptr;
     cudaEvent_t stop = nullptr;
 
-    const auto total_start = std::chrono::high_resolution_clock::now();
-
+    auto phase_start = std::chrono::high_resolution_clock::now();
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_input), image_bytes));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_intermediate), image_bytes));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_output), image_bytes));
     CUDA_CHECK(cudaMalloc(reinterpret_cast<void**>(&d_filter_1d), filter_bytes));
+    auto phase_stop = std::chrono::high_resolution_clock::now();
+    timing.allocation_time_ms = elapsed_ms(phase_start, phase_stop);
 
+    phase_start = std::chrono::high_resolution_clock::now();
     CUDA_CHECK(cudaMemcpy(d_input, input.data(), image_bytes, cudaMemcpyHostToDevice));
     CUDA_CHECK(cudaMemcpy(d_filter_1d, filter_1d.data(), filter_bytes, cudaMemcpyHostToDevice));
+    phase_stop = std::chrono::high_resolution_clock::now();
+    timing.host_to_device_time_ms = elapsed_ms(phase_start, phase_stop);
 
     for (int warmup = 0; warmup < warmup_count; ++warmup) {
         launch_separable_kernels(d_input, d_intermediate, d_output, width, height, d_filter_1d, filter_size);
@@ -457,28 +517,50 @@ void convolution_cuda_separable(const std::vector<float>& input,
 
     CUDA_CHECK(cudaEventCreate(&start));
     CUDA_CHECK(cudaEventCreate(&stop));
-    CUDA_CHECK(cudaEventRecord(start));
+    std::vector<double> kernel_samples;
+    kernel_samples.reserve(static_cast<size_t>(repeat_count));
     for (int repeat = 0; repeat < repeat_count; ++repeat) {
+        CUDA_CHECK(cudaEventRecord(start));
         launch_separable_kernels(d_input, d_intermediate, d_output, width, height, d_filter_1d, filter_size);
         CUDA_CHECK(cudaGetLastError());
-    }
-    CUDA_CHECK(cudaEventRecord(stop));
-    CUDA_CHECK(cudaEventSynchronize(stop));
-    CUDA_CHECK(cudaEventElapsedTime(&timing.kernel_time_ms, start, stop));
-    timing.kernel_time_ms /= static_cast<float>(repeat_count);
+        CUDA_CHECK(cudaEventRecord(stop));
+        CUDA_CHECK(cudaEventSynchronize(stop));
 
+        float sample_ms = 0.0f;
+        CUDA_CHECK(cudaEventElapsedTime(&sample_ms, start, stop));
+        kernel_samples.push_back(static_cast<double>(sample_ms));
+    }
+    timing.kernel_stats = compute_timing_stats(kernel_samples);
+    timing.kernel_time_ms = timing.kernel_stats.average_ms;
+
+    phase_start = std::chrono::high_resolution_clock::now();
     CUDA_CHECK(cudaMemcpy(output.data(), d_output, image_bytes, cudaMemcpyDeviceToHost));
+    phase_stop = std::chrono::high_resolution_clock::now();
+    timing.device_to_host_time_ms = elapsed_ms(phase_start, phase_stop);
 
     CUDA_CHECK(cudaEventDestroy(start));
     CUDA_CHECK(cudaEventDestroy(stop));
+
+    phase_start = std::chrono::high_resolution_clock::now();
     CUDA_CHECK(cudaFree(d_filter_1d));
     CUDA_CHECK(cudaFree(d_output));
     CUDA_CHECK(cudaFree(d_intermediate));
     CUDA_CHECK(cudaFree(d_input));
+    phase_stop = std::chrono::high_resolution_clock::now();
+    timing.free_time_ms = elapsed_ms(phase_start, phase_stop);
 
-    const auto total_stop = std::chrono::high_resolution_clock::now();
-    timing.total_time_ms = std::chrono::duration<double, std::milli>(
-        total_stop - total_start).count();
+    const double fixed_overhead_ms = timing.allocation_time_ms +
+                                     timing.host_to_device_time_ms +
+                                     timing.device_to_host_time_ms +
+                                     timing.free_time_ms;
+    std::vector<double> total_samples;
+    total_samples.reserve(kernel_samples.size());
+    for (const double kernel_sample : kernel_samples) {
+        total_samples.push_back(fixed_overhead_ms + kernel_sample);
+    }
+
+    timing.total_stats = compute_timing_stats(total_samples);
+    timing.total_time_ms = timing.total_stats.average_ms;
 }
 
 std::string get_cuda_device_name() {
@@ -487,5 +569,6 @@ std::string get_cuda_device_name() {
 
     cudaDeviceProp properties{};
     CUDA_CHECK(cudaGetDeviceProperties(&properties, device));
+    CUDA_CHECK(cudaFree(nullptr));
     return properties.name;
 }

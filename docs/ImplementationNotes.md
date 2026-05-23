@@ -57,6 +57,15 @@ Supplemental stress test:
 
 The 4096x4096 case completed successfully and is stored separately from the official 5-repeat matrix.
 
+Phase 1 benchmark rigor update:
+
+- CPU timing now records every repeat and reports average, minimum, maximum, and standard deviation.
+- CUDA kernel timing now records every measured repeat with CUDA events.
+- GPU total timing is reported as fixed allocation/copy/free overhead plus each measured kernel sample.
+- GPU time breakdown is recorded for allocation, host-to-device copy, kernel, device-to-host copy, and free time.
+- CSV output includes estimated operation count, CPU GFLOP/s, and CUDA kernel GFLOP/s.
+- `results/summary_best_versions.csv` records the best kernel-time and best total-time version for each image/filter case.
+
 ## Performance Interpretation Guide
 
 Expected trend:
@@ -70,18 +79,20 @@ Expected trend:
 Observed final result highlights:
 
 - All official benchmark rows passed correctness.
-- Best official kernel-only speedup: `482.630190x`, 1024x1024, 11x11, `cuda_separable`.
-- Best official total GPU speedup: `15.540952x`, 2048x2048, 11x11, `cuda_separable`.
-- Supplemental 4096x4096 stress test also passed all correctness checks.
+- Best official kernel-only speedup after the Phase 1 timing update: `329.099377x`, 2048x2048, 11x11, `cuda_separable`.
+- Best official total GPU speedup after the Phase 1 timing update: `30.094411x`, 2048x2048, 11x11, `cuda_shared_constant_filter`.
+- Supplemental 4096x4096 stress test also passed all correctness checks and reached `35.031400x` total speedup for `cuda_separable` with the 11x11 filter.
 
 Interpretation:
 
-The separable implementation is the strongest version for large filters because the generated normalized box filter is mathematically separable. Constant-memory filtering helps the direct convolution variants for larger filter sizes, while shared-memory tiling is most useful when global-memory reuse offsets the extra tile-loading overhead. Small cases can show lower total GPU speedup because setup, allocation, and transfer costs dominate.
+The separable implementation is the strongest kernel-time version for large filters because the generated normalized box filter is mathematically separable. Constant-memory filtering helps the direct convolution variants for larger filter sizes and can win total time when its kernel improvement offsets transfer and allocation overhead. Shared-memory tiling is useful when global-memory reuse offsets the extra tile-loading overhead. Small cases can show lower total GPU speedup because setup, allocation, and transfer costs dominate.
+
+The Phase 1 standard-deviation columns expose run-to-run stability. For example, the 2048x2048 11x11 shared-memory tiled run showed noticeably higher kernel variance than the other 11x11 direct variants. This is useful report evidence: a single average can hide benchmark instability, so min/max/stddev should be kept in the final tables or appendix.
 
 ## Challenges And Solutions
 
 - Boundary handling can easily diverge between CPU and GPU. Solution: all versions use zero-padding semantics.
 - Shared-memory halo indexing is error-prone. Solution: load a full `(blockDim + 2 * radius)` tile and use CPU comparison for every benchmark case.
-- Timing can be misleading if only one run is measured. Solution: configurable repeats and warmups.
-- GPU transfer overhead affects practical speedup. Solution: CSV includes both kernel-only and total GPU timing.
+- Timing can be misleading if only one run is measured. Solution: configurable repeats, warmups, min/max/stddev, and GFLOP/s.
+- GPU transfer overhead affects practical speedup. Solution: CSV includes kernel-only timing, total GPU timing, and allocation/copy/free breakdown.
 - First CUDA calls and small workloads can have high total overhead. Solution: report kernel-only and total timing separately and use larger image sizes for final analysis.

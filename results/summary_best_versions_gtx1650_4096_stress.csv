@@ -1,0 +1,5 @@
+image_width,image_height,filter_size,best_kernel_time_version,best_total_time_version,best_kernel_speedup,best_total_speedup,correctness_status
+4096,4096,3,cuda_naive_global_memory,cuda_separable,69.311687,4.660278,passed
+4096,4096,5,cuda_separable,cuda_shared_constant_filter,122.640036,8.219692,passed
+4096,4096,7,cuda_separable,cuda_shared_constant_filter,197.882781,15.045072,passed
+4096,4096,11,cuda_separable,cuda_separable,435.060828,35.031443,passed

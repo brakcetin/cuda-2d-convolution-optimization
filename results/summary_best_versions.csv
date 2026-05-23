@@ -1,0 +1,13 @@
+image_width,image_height,filter_size,best_kernel_time_version,best_total_time_version,best_kernel_speedup,best_total_speedup,correctness_status
+512,512,3,cuda_naive_global_memory,cuda_separable,51.125873,1.997008,passed
+512,512,5,cuda_separable,cuda_shared_memory_tiled,89.225380,3.917337,passed
+512,512,7,cuda_separable,cuda_shared_memory_tiled,128.967898,6.802220,passed
+512,512,11,cuda_separable,cuda_separable,301.707216,17.352204,passed
+1024,1024,3,cuda_naive_global_memory,cuda_naive_global_memory,59.275194,2.387384,passed
+1024,1024,5,cuda_separable,cuda_naive_global_memory,109.515705,5.995949,passed
+1024,1024,7,cuda_separable,cuda_shared_constant_filter,144.435758,11.910471,passed
+1024,1024,11,cuda_separable,cuda_naive_global_memory,273.427398,20.624487,passed
+2048,2048,3,cuda_naive_global_memory,cuda_shared_memory_tiled,62.141449,4.022139,passed
+2048,2048,5,cuda_separable,cuda_shared_constant_filter,116.115295,7.500172,passed
+2048,2048,7,cuda_separable,cuda_shared_constant_filter,151.251545,14.005035,passed
+2048,2048,11,cuda_separable,cuda_shared_constant_filter,329.099377,30.094411,passed

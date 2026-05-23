@@ -100,6 +100,7 @@ int main(int argc, char** argv) {
         const std::vector<BenchmarkResult> results = run_benchmarks(options);
         write_results_csv("results/timing_results.csv", results);
         write_results_csv("results/correctness_results.csv", results);
+        write_best_versions_csv("results/summary_best_versions.csv", results);
 
         const bool all_passed = std::all_of(results.begin(), results.end(),
                                            [](const BenchmarkResult& result) {
@@ -108,7 +109,8 @@ int main(int argc, char** argv) {
 
         std::cout << "\nResults written to:\n"
                   << "  results/timing_results.csv\n"
-                  << "  results/correctness_results.csv\n";
+                  << "  results/correctness_results.csv\n"
+                  << "  results/summary_best_versions.csv\n";
         std::cout << "Correctness summary: "
                   << (all_passed ? "all CUDA runs passed" : "one or more CUDA runs failed")
                   << '\n';

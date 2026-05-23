@@ -21,3 +21,6 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options);
 
 void write_results_csv(const std::string& path,
                        const std::vector<BenchmarkResult>& results);
+
+void write_best_versions_csv(const std::string& path,
+                             const std::vector<BenchmarkResult>& results);
