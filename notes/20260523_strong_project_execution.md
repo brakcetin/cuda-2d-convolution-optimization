@@ -289,3 +289,134 @@ Observed:
 Interpretation:
 
 The machine has an NVIDIA driver and GPU visibility, but the build toolchain is not configured. Install CMake and CUDA Toolkit, or add them to PATH, before compiling and collecting final benchmark CSVs.
+
+### 10. Installed CMake And CUDA Toolkit
+
+Installed with winget:
+
+```powershell
+winget install --id Kitware.CMake -e --accept-source-agreements --accept-package-agreements
+winget install --id Nvidia.CUDA -e --accept-source-agreements --accept-package-agreements
+```
+
+Installed versions verified in the current shell by prepending install folders to PATH:
+
+```powershell
+$env:Path = 'C:\Program Files\CMake\bin;C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.2\bin;' + $env:Path
+cmake --version
+nvcc --version
+```
+
+Observed:
+
+- CMake 4.3.3 installed at `C:\Program Files\CMake\bin`.
+- CUDA Toolkit 13.2 installed at `C:\Program Files\NVIDIA GPU Computing Toolkit\CUDA\v13.2`.
+- `nvcc` reports CUDA compilation tools release 13.2.
+
+Added script helper:
+
+- `scripts/tool_paths.ps1`
+
+Why:
+
+The current Codex/PowerShell process did not automatically pick up installer PATH changes. The project scripts now add common CMake and CUDA Toolkit paths for the current script process before checking, configuring, building, or running benchmarks.
+
+Remaining issue:
+
+`cl.exe` was not found on PATH, and no MSVC `cl.exe` was found under `C:\Program Files\Microsoft Visual Studio`. CUDA on Windows still needs a supported host C++ compiler, normally Visual Studio Build Tools with the C++ workload.
+
+### 11. Installed Visual Studio Build Tools
+
+Installed with winget:
+
+```powershell
+winget install --id Microsoft.VisualStudio.2022.BuildTools -e --accept-source-agreements --accept-package-agreements --override "--quiet --wait --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended"
+```
+
+Observed:
+
+- Visual Studio Build Tools installed at `C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools`.
+- `cl.exe` and `nmake.exe` are available under the MSVC toolchain folder.
+
+Updated:
+
+- `scripts/configure_release.ps1` now uses the Visual Studio generator:
+
+```powershell
+cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+```
+
+Why:
+
+The Visual Studio generator lets CMake discover the MSVC/CUDA host compiler setup without requiring every terminal to be a Developer Command Prompt.
+
+### 12. Switched Scripts To Developer Command Environment
+
+The Visual Studio generator did not detect the CUDA toolset immediately after installing Build Tools and CUDA. To make the project scripts more reliable, the CMake scripts now locate `VsDevCmd.bat` with `vswhere` and run configure/build inside the Visual Studio developer environment.
+
+Updated:
+
+- `scripts/tool_paths.ps1` now has `Get-VsDevCmdPath`.
+- `scripts/configure_release.ps1` runs:
+
+```powershell
+cmd /c "`"$VsDevCmd`" -arch=x64 && cmake -S . -B build -G `"NMake Makefiles`" -DCMAKE_BUILD_TYPE=Release"
+```
+
+- `scripts/build_release.ps1` runs CMake build inside the same developer environment.
+
+Why:
+
+CUDA on Windows needs MSVC host compiler environment variables such as PATH, INCLUDE, and LIB. `VsDevCmd.bat` initializes those correctly.
+
+### 13. Configured, Built, And Ran Smoke Benchmark
+
+Commands:
+
+```powershell
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\check_environment.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\configure_release.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\build_release.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts\run_benchmarks.ps1 -ImageSizes "512" -FilterSizes "3" -Repeats 1 -Warmups 1 -Versions "all"
+```
+
+Environment result:
+
+- CMake 4.3.3 found.
+- CUDA Toolkit 13.2 found.
+- `nvcc` found.
+- NVIDIA GPU found: NVIDIA GeForce GTX 1650 with Max-Q Design.
+- MSVC host compiler found through Visual Studio Build Tools developer environment.
+
+Configure result:
+
+- CMake detected MSVC 19.44.
+- CMake detected CUDA compiler NVIDIA 13.2.78.
+- Build files generated successfully.
+
+Build result:
+
+- `convolution_benchmark.exe` built successfully.
+
+Smoke benchmark result:
+
+- Image: 512x512.
+- Filter: 3x3.
+- Repeats: 1.
+- Versions: all.
+- All CUDA versions passed correctness.
+
+Observed versions:
+
+- `cuda_naive_global_memory`
+- `cuda_shared_memory_tiled`
+- `cuda_shared_constant_filter`
+- `cuda_separable`
+
+Interpretation:
+
+The Windows CUDA build environment is now usable. The project has crossed an important line: it is no longer just source code, it configures, builds, runs on the GPU, and validates all implemented CUDA versions against the CPU baseline.
+
+Next step:
+
+Run the full benchmark matrix after deciding whether the GTX 1650 Max-Q should be the final benchmark GPU or only the development/test GPU.

@@ -1,6 +1,8 @@
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. "$PSScriptRoot\tool_paths.ps1"
+
 function Test-Command {
     param(
         [Parameter(Mandatory = $true)]

@@ -9,6 +9,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
 
+. "$PSScriptRoot\tool_paths.ps1"
+
 $RepoRoot = Resolve-Path "$PSScriptRoot\.."
 Set-Location $RepoRoot
 

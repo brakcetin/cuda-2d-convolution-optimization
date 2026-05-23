@@ -1,1 +1,5 @@
 image_width,image_height,filter_size,version,device_name,repeat_count,cpu_time_ms,gpu_kernel_time_ms,gpu_total_time_ms,kernel_speedup,total_speedup,max_abs_error,mean_abs_error,passed
+512,512,3,cuda_naive_global_memory,"NVIDIA GeForce GTX 1650 with Max-Q Design",1,3.968200,0.063968,171.589100,62.034139,0.023126,0.000000,0.000000,true
+512,512,3,cuda_shared_memory_tiled,"NVIDIA GeForce GTX 1650 with Max-Q Design",1,3.968200,0.081600,3.630400,48.629900,1.093048,0.000000,0.000000,true
+512,512,3,cuda_shared_constant_filter,"NVIDIA GeForce GTX 1650 with Max-Q Design",1,3.968200,0.067296,1.951200,58.966359,2.033723,0.000000,0.000000,true
+512,512,3,cuda_separable,"NVIDIA GeForce GTX 1650 with Max-Q Design",1,3.968200,0.081664,1.893500,48.591789,2.095696,0.000000,0.000000,true
