@@ -13,6 +13,8 @@ Implemented versions:
 - `cuda_naive_global_memory`: one CUDA thread computes one output pixel; input image and filter are read from global memory.
 - `cuda_shared_memory_tiled`: each block loads a tile plus halo into dynamic shared memory, then computes output pixels from shared memory.
 - `cuda_shared_constant_filter`: input tile is loaded into shared memory and filter coefficients are read from CUDA constant memory.
+- `cuda_multi_output`: one thread computes two horizontally adjacent direct-convolution outputs using global-memory image and filter reads.
+- `cuda_register_tiled`: one thread computes a 2x1 direct-convolution output tile with two register accumulators.
 - `cuda_separable`: for generated separable filters, performs horizontal 1D convolution followed by vertical 1D convolution.
 
 ## Filter Types
@@ -84,6 +86,7 @@ Phase 1 benchmark rigor update:
 - `results/summary_best_versions.csv` records the best kernel-time and best total-time version for each image/filter case.
 - Phase 2 adds `filter_type` to all benchmark CSVs and groups best-version summaries by image size, filter size, and filter type.
 - Phase 3 adds runtime-configurable CUDA block dimensions. All CUDA launches now use the selected block shape, shared-memory tile allocation uses `(block_width + 2 * radius) * (block_height + 2 * radius)`, and the best-version summary records the winning block shape.
+- Phase 4 adds two direct-convolution output-tiling kernels. `cuda_multi_output` and `cuda_register_tiled` keep the same direct operation-count estimate as the other direct kernels because they change work assignment and reuse, not convolution mathematics.
 
 ## Performance Interpretation Guide
 
@@ -98,16 +101,20 @@ Expected trend:
 Observed final result highlights:
 
 - All official benchmark rows passed correctness.
-- Phase 3 official matrix contains 672 rows: 3 image sizes * 4 filter sizes * 4 filter types * 4 block sizes, with separable rows only for box and Gaussian-like filters.
-- Best official kernel-only speedup after the block-size sweep: `452.838800x`, 2048x2048, 11x11, `gaussian`, `cuda_separable`, 32x8 block.
-- Best official total GPU speedup after the block-size sweep: `33.483935x`, 2048x2048, 11x11, `gaussian`, `cuda_separable`, 32x8 block.
-- Supplemental 4096x4096 stress test contains 224 rows and passed all correctness checks. It reached `466.565398x` kernel-only speedup for `cuda_separable` with the 11x11 Gaussian-like filter and `36.696784x` total speedup for `cuda_separable` with the 11x11 box filter, both using 32x8 blocks.
+- Phase 4 official matrix contains 1056 rows: 3 image sizes * 4 filter sizes * 4 filter types * 4 block sizes, with six versions for box/Gaussian-like filters and five direct versions for sharpen/Sobel-like filters.
+- Best official kernel-only speedup after Phase 4: `449.182387x`, 2048x2048, 11x11, `gaussian`, `cuda_separable`, 32x8 block.
+- Best official total GPU speedup after Phase 4: `36.267330x`, 2048x2048, 11x11, `sobel`, `cuda_shared_constant_filter`, 16x16 block.
+- Best official direct-convolution kernel-only speedup: `345.862019x`, 1024x1024, 11x11, `sharpen`, `cuda_shared_constant_filter`, 32x16 block.
+- Best official new-kernel speedup: `159.009746x`, 1024x1024, 11x11, `sharpen`, `cuda_register_tiled`, 32x8 block.
+- Supplemental 4096x4096 stress test contains 352 rows and passed all correctness checks. It reached `474.771679x` kernel-only speedup for `cuda_separable` with the 11x11 box filter and `36.079514x` total speedup for `cuda_separable` with the 11x11 Gaussian-like filter.
 
 Interpretation:
 
 The separable implementation is the strongest kernel-time version for large box and Gaussian-like filters because those filters are mathematically separable. It is intentionally not reported for sharpen or Sobel-like filters. Constant-memory filtering helps the direct convolution variants for larger filter sizes and is often the strongest direct-convolution option for sharpen and Sobel-like filters. Shared-memory tiling is useful when global-memory reuse offsets the extra tile-loading overhead. Small cases can show lower total GPU speedup because setup, allocation, and transfer costs dominate.
 
 The block-size sweep supports the adaptive-tiling theme from the related literature: tile shape changes occupancy, memory coalescing behavior, shared-memory footprint, and halo overhead. The 32x8 block shape won the headline official kernel and total cases, but the best-version summary shows that no single shape dominates every image/filter/version combination. For the final report, this is stronger than reporting only a hardcoded 16x16 launch because it demonstrates that launch configuration is an experimental variable.
+
+The multi-output and register-tiled direct kernels strengthen the direct-convolution comparison, especially for sharpen and Sobel-like filters where separable convolution is not reported. The register-tiled kernel is the stronger of the two new kernels in the official run, but the shared+constant direct kernel remains the best direct implementation overall for larger 11x11 sharpen/Sobel-like cases. This is still useful experimentally: it shows that output tiling helps some cases, while memory-hierarchy optimization of filter reads can dominate for larger direct filters.
 
 The Phase 1 standard-deviation columns expose run-to-run stability. For example, the 2048x2048 11x11 shared-memory tiled run showed noticeably higher kernel variance than the other 11x11 direct variants. This is useful report evidence: a single average can hide benchmark instability, so min/max/stddev should be kept in the final tables or appendix.
 
@@ -116,6 +123,7 @@ The Phase 1 standard-deviation columns expose run-to-run stability. For example,
 - Boundary handling can easily diverge between CPU and GPU. Solution: all versions use zero-padding semantics.
 - Shared-memory halo indexing is error-prone. Solution: load a full `(blockDim + 2 * radius)` tile and use CPU comparison for every benchmark case.
 - Hardcoded launch shapes can hide performance sensitivity. Solution: expose block sizes through CLI and scripts, validate them, and record the selected dimensions in every CSV row.
+- Output-tiling kernels can be harder to interpret than separable convolution because they do not reduce the mathematical operation count. Solution: keep their operation estimate equal to other direct kernels and discuss them as scheduling/reuse experiments.
 - Timing can be misleading if only one run is measured. Solution: configurable repeats, warmups, min/max/stddev, and GFLOP/s.
 - GPU transfer overhead affects practical speedup. Solution: CSV includes kernel-only timing, total GPU timing, and allocation/copy/free breakdown.
 - First CUDA calls and small workloads can have high total overhead. Solution: report kernel-only and total timing separately and use larger image sizes for final analysis.

@@ -234,6 +234,53 @@ def plot_speedup_by_block_size(rows: list[dict[str, str]], output_dir: Path) -> 
     plt.close()
 
 
+def plot_direct_versions_sobel(rows: list[dict[str, str]], output_dir: Path) -> None:
+    if not rows or "filter_type" not in rows[0]:
+        return
+
+    plt = require_matplotlib()
+    direct_versions = {
+        "cuda_naive_global_memory",
+        "cuda_shared_memory_tiled",
+        "cuda_shared_constant_filter",
+        "cuda_multi_output",
+        "cuda_register_tiled",
+    }
+    selected = [
+        row
+        for row in rows
+        if row["image_width"] == "1024"
+        and row["filter_size"] == "7"
+        and row["filter_type"] == "sobel"
+        and row["version"] in direct_versions
+    ]
+    if not selected:
+        return
+
+    grouped = group_by(selected, "version")
+    block_labels = sorted(
+        {f'{row["block_width"]}x{row["block_height"]}' for row in selected},
+        key=lambda label: (int(label.split("x")[0]), int(label.split("x")[1])),
+    )
+
+    plt.figure(figsize=(10, 6))
+    for version, version_rows in sorted(grouped.items()):
+        by_block = {
+            f'{row["block_width"]}x{row["block_height"]}': float(row["kernel_speedup"])
+            for row in version_rows
+        }
+        values = [by_block.get(block_label, 0.0) for block_label in block_labels]
+        plt.plot(block_labels, values, marker="o", label=version)
+
+    plt.ylabel("Kernel speedup vs CPU")
+    plt.xlabel("CUDA block size")
+    plt.title("Direct CUDA Versions, 1024x1024 7x7 Sobel")
+    plt.legend()
+    plt.tight_layout()
+    plt.savefig(output_dir / "direct_versions_speedup_1024_7x7_sobel.png", dpi=160)
+    plt.close()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate benchmark plots.")
     parser.add_argument("--input", default="results/timing_results.csv", type=Path)
@@ -251,6 +298,7 @@ def main() -> None:
     plot_kernel_vs_total(rows, args.output_dir)
     plot_speedup_by_filter_type(rows, args.output_dir)
     plot_speedup_by_block_size(rows, args.output_dir)
+    plot_direct_versions_sobel(rows, args.output_dir)
     print(f"Plots written to {args.output_dir}")
 
 

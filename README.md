@@ -18,11 +18,13 @@ The implementation starts with the standard CUDA baseline: one CUDA thread compu
 - `cuda_naive_global_memory`: one CUDA thread per output pixel, configurable thread-block shape, global-memory image/filter reads.
 - `cuda_shared_memory_tiled`: input tile plus halo loaded into dynamic shared memory.
 - `cuda_shared_constant_filter`: shared-memory input tile with filter coefficients stored in CUDA constant memory.
+- `cuda_multi_output`: direct global-memory convolution where each thread computes two horizontal output pixels.
+- `cuda_register_tiled`: direct global-memory 2x1 register-tiled convolution with two per-thread accumulators.
 - `cuda_separable`: horizontal and vertical 1D passes for generated separable box and Gaussian-like filters.
 
 Planned next work:
 
-- Add register-tiled or multi-output direct convolution experiments step by step after the benchmark foundation remains stable.
+- Prepare final report tables and presentation slides from the committed benchmark results.
 
 ## Technologies Used
 
@@ -189,19 +191,21 @@ Official benchmark matrix:
 
 Official result summary:
 
-- 672 benchmark rows were collected.
+- 1056 benchmark rows were collected.
 - All CUDA correctness checks passed.
 - Maximum reported absolute error in the CSV is below `1e-6`.
-- Best official kernel-only speedup is `452.838800x` for `cuda_separable` on 2048x2048 with 11x11 Gaussian-like filter using a 32x8 block.
-- Best official total GPU speedup is `33.483935x` for `cuda_separable` on 2048x2048 with 11x11 Gaussian-like filter using a 32x8 block.
+- Best official kernel-only speedup is `449.182387x` for `cuda_separable` on 2048x2048 with 11x11 Gaussian-like filter using a 32x8 block.
+- Best official total GPU speedup is `36.267330x` for `cuda_shared_constant_filter` on 2048x2048 with 11x11 Sobel-like filter using a 16x16 block.
+- Best official direct-convolution kernel-only speedup is `345.862019x` for `cuda_shared_constant_filter` on 1024x1024 with 11x11 sharpen filter using a 32x16 block.
+- Best official new-kernel speedup is `159.009746x` for `cuda_register_tiled` on 1024x1024 with 11x11 sharpen filter using a 32x8 block.
 - `cuda_separable` is reported only for box and Gaussian-like filters.
 
 Supplemental 4096x4096 stress test:
 
-- 224 benchmark rows were collected.
+- 352 benchmark rows were collected.
 - All CUDA correctness checks passed.
-- Best stress-test kernel-only speedup is `466.565398x` for `cuda_separable` with 11x11 Gaussian-like filter using a 32x8 block.
-- Best stress-test total GPU speedup is `36.696784x` for `cuda_separable` with 11x11 box filter using a 32x8 block.
+- Best stress-test kernel-only speedup is `474.771679x` for `cuda_separable` with 11x11 box filter using a 32x8 block.
+- Best stress-test total GPU speedup is `36.079514x` for `cuda_separable` with 11x11 Gaussian-like filter using a 16x16 block.
 
 ## Current Implementation Status
 
@@ -222,9 +226,12 @@ Completed:
 - Best-version summary CSV generation.
 - Shared-memory tiled CUDA implementation.
 - Constant-memory filter CUDA implementation.
+- Multi-output direct CUDA implementation.
+- Register-tiled direct CUDA implementation.
 - Separable CUDA implementation for separable box and Gaussian-like filters.
 - Plot generation script for benchmark graphs.
 - Block-size speedup plot for the 1024x1024, 7x7, box-filter case.
+- Direct-version speedup plot for the 1024x1024, 7x7, Sobel-like case.
 - CSV result generation.
 
 Limitations:

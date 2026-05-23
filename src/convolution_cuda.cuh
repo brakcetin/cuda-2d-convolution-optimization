@@ -54,6 +54,30 @@ void convolution_cuda_shared_constant_filter(const std::vector<float>& input,
                                              int repeat_count,
                                              CudaTiming& timing);
 
+void convolution_cuda_multi_output(const std::vector<float>& input,
+                                   std::vector<float>& output,
+                                   int width,
+                                   int height,
+                                   const std::vector<float>& filter,
+                                   int filter_size,
+                                   int block_width,
+                                   int block_height,
+                                   int warmup_count,
+                                   int repeat_count,
+                                   CudaTiming& timing);
+
+void convolution_cuda_register_tiled(const std::vector<float>& input,
+                                     std::vector<float>& output,
+                                     int width,
+                                     int height,
+                                     const std::vector<float>& filter,
+                                     int filter_size,
+                                     int block_width,
+                                     int block_height,
+                                     int warmup_count,
+                                     int repeat_count,
+                                     CudaTiming& timing);
+
 void convolution_cuda_separable(const std::vector<float>& input,
                                 std::vector<float>& output,
                                 int width,

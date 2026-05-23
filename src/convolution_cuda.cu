@@ -18,6 +18,8 @@ enum class KernelKind {
     NaiveGlobalMemory,
     SharedMemoryTiled,
     SharedConstantFilter,
+    MultiOutput,
+    RegisterTiled,
 };
 
 TimingStats compute_timing_stats(const std::vector<double>& samples) {
@@ -183,6 +185,100 @@ __global__ void convolution_shared_constant_filter_kernel(const float* input,
     output[y * width + x] = sum;
 }
 
+__device__ float compute_direct_pixel(const float* input,
+                                      int width,
+                                      int height,
+                                      const float* filter,
+                                      int filter_size,
+                                      int x,
+                                      int y) {
+    const int radius = filter_size / 2;
+    float sum = 0.0f;
+
+    for (int fy = 0; fy < filter_size; ++fy) {
+        const int image_y = y + fy - radius;
+        if (image_y < 0 || image_y >= height) {
+            continue;
+        }
+
+        for (int fx = 0; fx < filter_size; ++fx) {
+            const int image_x = x + fx - radius;
+            if (image_x < 0 || image_x >= width) {
+                continue;
+            }
+
+            sum += input[image_y * width + image_x] * filter[fy * filter_size + fx];
+        }
+    }
+
+    return sum;
+}
+
+__global__ void convolution_multi_output_kernel(const float* input,
+                                                float* output,
+                                                int width,
+                                                int height,
+                                                const float* filter,
+                                                int filter_size) {
+    const int x0 = (blockIdx.x * blockDim.x + threadIdx.x) * 2;
+    const int x1 = x0 + 1;
+    const int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (x0 >= width || y >= height) {
+        return;
+    }
+
+    output[y * width + x0] = compute_direct_pixel(input, width, height, filter, filter_size, x0, y);
+    if (x1 < width) {
+        output[y * width + x1] = compute_direct_pixel(input, width, height, filter, filter_size, x1, y);
+    }
+}
+
+__global__ void convolution_register_tiled_kernel(const float* input,
+                                                  float* output,
+                                                  int width,
+                                                  int height,
+                                                  const float* filter,
+                                                  int filter_size) {
+    const int x0 = (blockIdx.x * blockDim.x + threadIdx.x) * 2;
+    const int x1 = x0 + 1;
+    const int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (x0 >= width || y >= height) {
+        return;
+    }
+
+    const int radius = filter_size / 2;
+    float sum0 = 0.0f;
+    float sum1 = 0.0f;
+
+    for (int fy = 0; fy < filter_size; ++fy) {
+        const int image_y = y + fy - radius;
+        if (image_y < 0 || image_y >= height) {
+            continue;
+        }
+
+        for (int fx = 0; fx < filter_size; ++fx) {
+            const float filter_value = filter[fy * filter_size + fx];
+
+            const int image_x0 = x0 + fx - radius;
+            if (image_x0 >= 0 && image_x0 < width) {
+                sum0 += input[image_y * width + image_x0] * filter_value;
+            }
+
+            const int image_x1 = x1 + fx - radius;
+            if (x1 < width && image_x1 >= 0 && image_x1 < width) {
+                sum1 += input[image_y * width + image_x1] * filter_value;
+            }
+        }
+    }
+
+    output[y * width + x0] = sum0;
+    if (x1 < width) {
+        output[y * width + x1] = sum1;
+    }
+}
+
 __global__ void convolution_separable_horizontal_kernel(const float* input,
                                                         float* intermediate,
                                                         int width,
@@ -245,7 +341,12 @@ void launch_kernel(KernelKind kind,
                    int block_width,
                    int block_height) {
     const dim3 block(block_width, block_height);
-    const dim3 grid((width + block.x - 1) / block.x,
+    const int outputs_per_thread_x = (kind == KernelKind::MultiOutput ||
+                                      kind == KernelKind::RegisterTiled)
+                                         ? 2
+                                         : 1;
+    const dim3 grid((width + block.x * outputs_per_thread_x - 1) /
+                        (block.x * outputs_per_thread_x),
                     (height + block.y - 1) / block.y);
 
     switch (kind) {
@@ -270,6 +371,14 @@ void launch_kernel(KernelKind kind,
                 d_input, d_output, width, height, filter_size);
             break;
         }
+        case KernelKind::MultiOutput:
+            convolution_multi_output_kernel<<<grid, block>>>(
+                d_input, d_output, width, height, d_filter, filter_size);
+            break;
+        case KernelKind::RegisterTiled:
+            convolution_register_tiled_kernel<<<grid, block>>>(
+                d_input, d_output, width, height, d_filter, filter_size);
+            break;
     }
 }
 
@@ -469,6 +578,56 @@ void convolution_cuda_shared_constant_filter(const std::vector<float>& input,
                                              int repeat_count,
                                              CudaTiming& timing) {
     run_convolution(KernelKind::SharedConstantFilter,
+                    input,
+                    output,
+                    width,
+                    height,
+                    filter,
+                    filter_size,
+                    block_width,
+                    block_height,
+                    warmup_count,
+                    repeat_count,
+                    timing);
+}
+
+void convolution_cuda_multi_output(const std::vector<float>& input,
+                                   std::vector<float>& output,
+                                   int width,
+                                   int height,
+                                   const std::vector<float>& filter,
+                                   int filter_size,
+                                   int block_width,
+                                   int block_height,
+                                   int warmup_count,
+                                   int repeat_count,
+                                   CudaTiming& timing) {
+    run_convolution(KernelKind::MultiOutput,
+                    input,
+                    output,
+                    width,
+                    height,
+                    filter,
+                    filter_size,
+                    block_width,
+                    block_height,
+                    warmup_count,
+                    repeat_count,
+                    timing);
+}
+
+void convolution_cuda_register_tiled(const std::vector<float>& input,
+                                     std::vector<float>& output,
+                                     int width,
+                                     int height,
+                                     const std::vector<float>& filter,
+                                     int filter_size,
+                                     int block_width,
+                                     int block_height,
+                                     int warmup_count,
+                                     int repeat_count,
+                                     CudaTiming& timing) {
+    run_convolution(KernelKind::RegisterTiled,
                     input,
                     output,
                     width,

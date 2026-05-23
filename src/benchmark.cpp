@@ -208,7 +208,7 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {
     const std::string device_name = get_cuda_device_name();
 
     std::vector<BenchmarkResult> results;
-    results.reserve(cases.size() * options.block_sizes.size() * 4);
+    results.reserve(cases.size() * options.block_sizes.size() * 6);
 
     for (const BenchmarkCase& benchmark_case : cases) {
         const unsigned int seed = static_cast<unsigned int>(
@@ -331,6 +331,70 @@ std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {
 
                 BenchmarkResult result = make_result(benchmark_case,
                                                      "cuda_shared_constant_filter",
+                                                     device_name,
+                                                     block_size,
+                                                     options.repeat_count,
+                                                     cpu_stats,
+                                                     gpu_timing,
+                                                     correctness);
+                results.push_back(result);
+                print_result(result);
+            }
+
+            if (has_version_alias(requested_versions, "multi", "cuda_multi_output")) {
+                std::vector<float> gpu_output;
+                CudaTiming gpu_timing;
+                convolution_cuda_multi_output(input,
+                                              gpu_output,
+                                              benchmark_case.image_width,
+                                              benchmark_case.image_height,
+                                              filter_spec.filter_2d,
+                                              benchmark_case.filter_size,
+                                              block_size.width,
+                                              block_size.height,
+                                              options.warmup_count,
+                                              options.repeat_count,
+                                              gpu_timing);
+
+                const CorrectnessMetrics correctness = compare_outputs(
+                    cpu_output,
+                    gpu_output,
+                    kCorrectnessTolerance);
+
+                BenchmarkResult result = make_result(benchmark_case,
+                                                     "cuda_multi_output",
+                                                     device_name,
+                                                     block_size,
+                                                     options.repeat_count,
+                                                     cpu_stats,
+                                                     gpu_timing,
+                                                     correctness);
+                results.push_back(result);
+                print_result(result);
+            }
+
+            if (has_version_alias(requested_versions, "register", "cuda_register_tiled")) {
+                std::vector<float> gpu_output;
+                CudaTiming gpu_timing;
+                convolution_cuda_register_tiled(input,
+                                                gpu_output,
+                                                benchmark_case.image_width,
+                                                benchmark_case.image_height,
+                                                filter_spec.filter_2d,
+                                                benchmark_case.filter_size,
+                                                block_size.width,
+                                                block_size.height,
+                                                options.warmup_count,
+                                                options.repeat_count,
+                                                gpu_timing);
+
+                const CorrectnessMetrics correctness = compare_outputs(
+                    cpu_output,
+                    gpu_output,
+                    kCorrectnessTolerance);
+
+                BenchmarkResult result = make_result(benchmark_case,
+                                                     "cuda_register_tiled",
                                                      device_name,
                                                      block_size,
                                                      options.repeat_count,
