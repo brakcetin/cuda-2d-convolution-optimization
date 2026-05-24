@@ -187,3 +187,81 @@ The real-image demo improves presentation quality because it shows actual edge d
 ## Important Reminder
 
 If the images are from a stock-photo or third-party source, keep a source/license note for the final report or replace them with photos taken by the team.
+
+## For Teammate Reproduction
+
+After pulling the repository, the teammate can reproduce this workflow without needing to rediscover file paths.
+
+Fresh pull and build:
+
+```powershell
+git pull
+git status --short
+.\scripts\check_environment.ps1
+.\scripts\configure_release.ps1
+.\scripts\build_release.ps1
+```
+
+Committed real-image source files:
+
+```text
+data\real_images\building.png
+data\real_images\portrait.jpg
+data\real_images\texture.png
+```
+
+Committed converted PGM demo inputs:
+
+```text
+data\real_images\building_1024.pgm
+data\real_images\portrait_1024.pgm
+data\real_images\texture_1024.pgm
+```
+
+Generated local demo outputs:
+
+```text
+results\building_sobel.pgm
+results\portrait_gaussian.pgm
+results\portrait_sharpen.pgm
+results\texture_sobel.pgm
+```
+
+The generated output files are intentionally ignored by Git. They can be recreated with:
+
+```powershell
+.\scripts\prepare_real_images.ps1
+.\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\building_1024.pgm" -OutputPath "results\building_sobel.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
+.\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\portrait_1024.pgm" -OutputPath "results\portrait_gaussian.pgm" -FilterType "gaussian" -FilterSize 11 -Version "cuda_separable" -BlockSize "32x8"
+.\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\portrait_1024.pgm" -OutputPath "results\portrait_sharpen.pgm" -FilterType "sharpen" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
+.\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\texture_1024.pgm" -OutputPath "results\texture_sobel.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
+```
+
+Official benchmark validation after pull:
+
+```powershell
+$rows = Import-Csv results\timing_results.csv
+$failed = $rows | Where-Object { $_.passed -ne 'true' }
+$summary = Import-Csv results\summary_best_versions.csv
+$rows.Count
+$failed.Count
+$summary.Count
+```
+
+Expected:
+
+```text
+1408
+0
+64
+```
+
+If the teammate runs the full benchmark on RTX 4070, they should save the files separately:
+
+```powershell
+Copy-Item results\timing_results.csv results\timing_results_rtx4070.csv
+Copy-Item results\correctness_results.csv results\correctness_results_rtx4070.csv
+Copy-Item results\summary_best_versions.csv results\summary_best_versions_rtx4070.csv
+```
+
+Do not mix RTX 4070 rows with the official GTX 1650 CSV files unless the report is intentionally updated to include a multi-GPU comparison.

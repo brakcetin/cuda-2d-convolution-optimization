@@ -215,10 +215,18 @@ Recommended visual examples:
 - `portrait_1024.pgm` -> `portrait_sharpen.pgm`
 - `texture_1024.pgm` -> `texture_sobel.pgm`
 
+Recommended presentation pairing:
+
+- Building original and Sobel output for edge detection.
+- Portrait original and Gaussian output for blur.
+- Portrait original and sharpen output for detail enhancement.
+- Texture original and Sobel output for high-frequency edge response.
+
 Important:
 
 - For the final presentation, show committed official results, not the quick demo CSV produced by the smoke run.
 - If the smoke run is used during practice, restore official CSVs afterward from `results/timing_results_gtx1650_official.csv`, `results/correctness_results_gtx1650_official.csv`, and `results/summary_best_versions_gtx1650_official.csv`.
+- Real-image demos are visual examples only. They should not be described as the source of official speedup numbers.
 
 Restore command after a quick demo:
 

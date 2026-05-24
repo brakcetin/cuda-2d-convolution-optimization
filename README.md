@@ -105,6 +105,104 @@ Helper scripts are available under `scripts/`:
 .\scripts\run_benchmarks.ps1 -ImageSizes "512,1024,2048,4096" -FilterSizes "3,5,7,11" -FilterTypes "box,gaussian,sharpen,sobel" -BlockSizes "8x8,16x16,32x8,32x16" -Repeats 5 -Warmups 1 -Versions "all"
 ```
 
+## Project Pipeline
+
+Use this pipeline after pulling the repository on any CUDA-capable machine.
+
+1. Pull the latest repository state:
+
+   ```powershell
+   git pull
+   git status --short
+   ```
+
+2. Check the local CUDA/CMake/MSVC environment:
+
+   ```powershell
+   .\scripts\check_environment.ps1
+   ```
+
+3. Configure CMake:
+
+   ```powershell
+   .\scripts\configure_release.ps1
+   ```
+
+4. Build the Release executable:
+
+   ```powershell
+   .\scripts\build_release.ps1
+   ```
+
+5. Validate the committed official GTX 1650 result files:
+
+   ```powershell
+   $rows = Import-Csv results\timing_results.csv
+   $failed = $rows | Where-Object { $_.passed -ne 'true' }
+   $summary = Import-Csv results\summary_best_versions.csv
+   $rows.Count
+   $failed.Count
+   $summary.Count
+   ```
+
+   Expected values:
+
+   ```text
+   1408
+   0
+   64
+   ```
+
+6. Run the official benchmark on another GPU only if new hardware results are needed:
+
+   ```powershell
+   .\scripts\run_benchmarks.ps1 -ImageSizes "512,1024,2048,4096" -FilterSizes "3,5,7,11" -FilterTypes "box,gaussian,sharpen,sobel" -BlockSizes "8x8,16x16,32x8,32x16" -Repeats 5 -Warmups 1 -Versions "all"
+   ```
+
+   If this is an RTX 4070 run, save the generated CSV files separately:
+
+   ```powershell
+   Copy-Item results\timing_results.csv results\timing_results_rtx4070.csv
+   Copy-Item results\correctness_results.csv results\correctness_results_rtx4070.csv
+   Copy-Item results\summary_best_versions.csv results\summary_best_versions_rtx4070.csv
+   ```
+
+7. Generate plots from the current benchmark CSV:
+
+   ```powershell
+   python .\scripts\plot_results.py --input results\timing_results.csv --output-dir results\plots
+   ```
+
+8. Prepare real-image demo inputs:
+
+   ```powershell
+   .\scripts\prepare_real_images.ps1
+   ```
+
+   This script uses ImageMagick when available. On Burak's machine it detects:
+
+   ```text
+   C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe
+   ```
+
+9. Run qualitative real-image demos:
+
+   ```powershell
+   .\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\building_1024.pgm" -OutputPath "results\building_sobel.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
+   .\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\portrait_1024.pgm" -OutputPath "results\portrait_gaussian.pgm" -FilterType "gaussian" -FilterSize 11 -Version "cuda_separable" -BlockSize "32x8"
+   .\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\portrait_1024.pgm" -OutputPath "results\portrait_sharpen.pgm" -FilterType "sharpen" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
+   .\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\texture_1024.pgm" -OutputPath "results\texture_sobel.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
+   ```
+
+10. Restore official GTX 1650 CSVs after any smoke/demo benchmark that overwrites result files:
+
+    ```powershell
+    Copy-Item results\timing_results_gtx1650_official.csv results\timing_results.csv
+    Copy-Item results\correctness_results_gtx1650_official.csv results\correctness_results.csv
+    Copy-Item results\summary_best_versions_gtx1650_official.csv results\summary_best_versions.csv
+    python .\scripts\plot_results.py --input results\timing_results.csv --output-dir results\plots
+    ```
+
 Generate plots after benchmark CSV files are populated:
 
 ```powershell
@@ -129,6 +227,29 @@ Real demo examples:
 .\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\portrait_1024.pgm" -OutputPath "results\portrait_sharpen.pgm" -FilterType "sharpen" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
 .\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\texture_1024.pgm" -OutputPath "results\texture_sobel.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
 ```
+
+## Real Image File Map
+
+Committed source images:
+
+- `data/real_images/building.png`
+- `data/real_images/portrait.jpg`
+- `data/real_images/texture.png`
+
+Committed converted PGM demo inputs:
+
+- `data/real_images/building_1024.pgm`
+- `data/real_images/portrait_1024.pgm`
+- `data/real_images/texture_1024.pgm`
+
+Generated local demo outputs, not committed:
+
+- `results/building_sobel.pgm`
+- `results/portrait_gaussian.pgm`
+- `results/portrait_sharpen.pgm`
+- `results/texture_sobel.pgm`
+
+The real-image files are qualitative presentation/demo material. Official speedup claims use the synthetic benchmark CSV files under `results/`.
 
 ## Benchmark Parameters
 
