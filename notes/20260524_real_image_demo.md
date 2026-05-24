@@ -20,19 +20,49 @@ Converted demo inputs:
 
 ## Tooling
 
-ImageMagick was not detected on PATH in this session:
+ImageMagick download source:
+
+- https://imagemagick.org/download/#windows&gsc.tab=0
+
+Downloaded installer:
+
+- `C:\Users\Burak\Downloads\ImageMagick-7.1.2-23-Q16-HDRI-x64-dll.exe`
+
+Installed executable:
+
+- `C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe`
+
+ImageMagick was installed, but `magick` was not detected on PATH in this PowerShell session:
 
 ```powershell
 Get-Command magick -ErrorAction SilentlyContinue
 ```
 
-Python and Pillow were available, so the conversion used Python/Pillow locally. A helper script was added:
+Direct version check:
+
+```powershell
+& "C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe" -version
+```
+
+Observed:
+
+```text
+Version: ImageMagick 7.1.2-23 Q16-HDRI x64
+```
+
+A helper script was updated:
 
 ```powershell
 .\scripts\prepare_real_images.ps1
 ```
 
-The helper script uses ImageMagick if `magick` is available and falls back to Python/Pillow otherwise.
+The helper script now detects ImageMagick in three ways:
+
+1. `magick` on PATH.
+2. `C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe`.
+3. Any `C:\Program Files\ImageMagick*\magick.exe`.
+
+If ImageMagick is not found, it falls back to Python/Pillow.
 
 ## Conversion Commands
 
@@ -50,6 +80,15 @@ Project helper form:
 .\scripts\prepare_real_images.ps1
 ```
 
+Observed output:
+
+```text
+Using ImageMagick: C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe
+data\real_images\building.png -> data\real_images\building_1024.pgm
+data\real_images\portrait.jpg -> data\real_images\portrait_1024.pgm
+data\real_images\texture.png -> data\real_images\texture_1024.pgm
+```
+
 ## Demo Runs
 
 Building Sobel:
@@ -63,7 +102,7 @@ Result:
 ```text
 Image: 1024x1024
 Filter: sobel 3x3
-Kernel time ms: 0.24992
+Kernel time ms: 0.250272
 Max abs error: 0
 Mean abs error: 0
 Passed: true
@@ -80,9 +119,9 @@ Result:
 ```text
 Image: 1024x1024
 Filter: gaussian 11x11
-Kernel time ms: 0.409824
+Kernel time ms: 0.407552
 Max abs error: 3.57628e-07
-Mean abs error: 3.04957e-08
+Mean abs error: 3.04456e-08
 Passed: true
 ```
 
@@ -97,9 +136,9 @@ Result:
 ```text
 Image: 1024x1024
 Filter: sharpen 3x3
-Kernel time ms: 0.270368
-Max abs error: 4.76837e-07
-Mean abs error: 1.00891e-07
+Kernel time ms: 0.251232
+Max abs error: 5.36442e-07
+Mean abs error: 1.00909e-07
 Passed: true
 ```
 
@@ -114,7 +153,7 @@ Result:
 ```text
 Image: 1024x1024
 Filter: sobel 3x3
-Kernel time ms: 0.262304
+Kernel time ms: 0.240672
 Max abs error: 0
 Mean abs error: 0
 Passed: true

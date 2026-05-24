@@ -15,12 +15,37 @@ $Images = @(
     @{ Input = "texture.png"; Output = "texture_${Size}.pgm" }
 )
 
-$Magick = Get-Command magick -ErrorAction SilentlyContinue
+function Get-MagickCommand {
+    $PathCommand = Get-Command magick -ErrorAction SilentlyContinue
+    if ($PathCommand) {
+        return $PathCommand.Source
+    }
+
+    $KnownPath = "C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe"
+    if (Test-Path $KnownPath) {
+        return $KnownPath
+    }
+
+    $Installed = Get-ChildItem "C:\Program Files" -Directory -Filter "ImageMagick*" -ErrorAction SilentlyContinue |
+        ForEach-Object {
+            Get-ChildItem $_.FullName -Filter "magick.exe" -ErrorAction SilentlyContinue
+        } |
+        Select-Object -First 1
+
+    if ($Installed) {
+        return $Installed.FullName
+    }
+
+    return $null
+}
+
+$Magick = Get-MagickCommand
 if ($Magick) {
+    Write-Host "Using ImageMagick: $Magick"
     foreach ($Image in $Images) {
         $InputPath = Join-Path $InputDir $Image.Input
         $OutputPath = Join-Path $InputDir $Image.Output
-        & magick "$InputPath" -colorspace Gray -resize "${Size}x${Size}!" "$OutputPath"
+        & $Magick "$InputPath" -colorspace Gray -resize "${Size}x${Size}!" "$OutputPath"
         Write-Host "$InputPath -> $OutputPath"
     }
     exit 0

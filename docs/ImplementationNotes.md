@@ -53,6 +53,14 @@ Demo command:
 
 The PGM path supports simple `P2` and `P5` grayscale images with max value up to 255. Output is written as an ASCII `P2` file. Output normalization is enabled by default so edge filters such as Sobel are visible in image viewers.
 
+Real-image conversion uses ImageMagick when available. The installed Windows executable used for this project is:
+
+```text
+C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe
+```
+
+The installer was downloaded from the official ImageMagick Windows page as `ImageMagick-7.1.2-23-Q16-HDRI-x64-dll.exe`.
+
 Current real-image examples:
 
 - building image: Sobel edge detection

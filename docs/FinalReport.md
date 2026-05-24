@@ -15,6 +15,8 @@ The final benchmark uses synthetic grayscale images and four filter types: box, 
 
 The repository also includes a qualitative real-image demo path using grayscale PGM images. This demo is useful for presentation screenshots and visual inspection, but it is not used for official speedup claims because real-image content is less controlled than synthetic benchmark data.
 
+Real-image conversion was performed with ImageMagick 7.1.2-23 Q16-HDRI on Windows. The project keeps this conversion step outside the official benchmark so image-decoding overhead does not affect the CUDA timing analysis.
+
 ### Proposal Alignment
 
 The final implementation follows and extends the original project proposal. The required sequential CPU baseline, naive CUDA implementation, shared-memory tiled implementation, constant-memory filter optimization, separable convolution path, correctness verification, and speedup analysis are all implemented. The benchmark matrix also includes the proposed large image sizes up to 4096x4096, multiple filter sizes from 3x3 to 11x11, and both kernel-only and total GPU timing.

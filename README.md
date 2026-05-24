@@ -119,7 +119,7 @@ Optional PGM demo path:
 .\scripts\run_pgm_demo.ps1 -InputPath "data\sample_input.pgm" -OutputPath "results\demo_output.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
 ```
 
-The PGM demo is for presentation/demo use only. It does not replace the official synthetic benchmark matrix.
+The PGM demo is for presentation/demo use only. It does not replace the official synthetic benchmark matrix. `prepare_real_images.ps1` uses ImageMagick when available; on this machine it detects `C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe`.
 
 Real demo examples:
 

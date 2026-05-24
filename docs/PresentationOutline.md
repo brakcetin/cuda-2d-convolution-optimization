@@ -206,6 +206,8 @@ Optional real-image PGM demo:
 .\scripts\run_pgm_demo.ps1 -InputPath "data\sample_input.pgm" -OutputPath "results\demo_output.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
 ```
 
+Note: `prepare_real_images.ps1` can use ImageMagick from `C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe` even if `magick` is not on PATH.
+
 Recommended visual examples:
 
 - `building_1024.pgm` -> `building_sobel.pgm`
