@@ -71,7 +71,7 @@ Current real-image examples:
 
 After pulling the repository, a teammate should treat the committed `data/real_images/*_1024.pgm` files as ready-to-use demo inputs. The original `building.png`, `portrait.jpg`, and `texture.png` files are also committed so the PGM conversion can be reproduced with `scripts/prepare_real_images.ps1`.
 
-Generated outputs such as `results/building_sobel.pgm`, `results/portrait_gaussian.pgm`, `results/portrait_sharpen.pgm`, and `results/texture_sobel.pgm` are local demo artifacts and are not committed. They can be regenerated at any time with `scripts/run_pgm_demo.ps1`.
+Generated outputs such as `results/building_sobel.pgm`, `results/portrait_gaussian.pgm`, `results/portrait_sharpen.pgm`, and `results/texture_sobel.pgm` are now committed as qualitative demo references. They can still be regenerated at any time with `scripts/run_pgm_demo.ps1` if the teammate wants to reproduce them on another GPU.
 
 Official benchmark results remain synthetic and are stored under `results/` as CSV files. The real-image path is qualitative demo evidence only; it should not replace the official synthetic benchmark matrix in the report.
 

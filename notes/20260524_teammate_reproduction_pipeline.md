@@ -134,7 +134,7 @@ data\real_images\portrait_1024.pgm
 data\real_images\texture_1024.pgm
 ```
 
-Generated local demo outputs:
+Committed real-image demo outputs:
 
 ```text
 results\building_sobel.pgm
@@ -143,7 +143,7 @@ results\portrait_sharpen.pgm
 results\texture_sobel.pgm
 ```
 
-The generated output files are ignored by Git.
+The generated output files are committed as qualitative presentation references. They can still be regenerated locally to verify the demo workflow.
 
 ## 8. Prepare Real Images
 
@@ -207,4 +207,4 @@ git commit -m "Add RTX 4070 comparison results"
 git push
 ```
 
-Do not commit generated `results/*.pgm` demo outputs unless the team intentionally decides to include PNG/PGM examples in the report assets.
+The real-image demo outputs are intentionally committed now because the team decided to include expected visual examples for teammate reproduction. Keep any extra temporary PGM experiments out of commits unless they are added to the documented demo set.

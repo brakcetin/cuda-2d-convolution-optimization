@@ -242,14 +242,14 @@ Committed converted PGM demo inputs:
 - `data/real_images/portrait_1024.pgm`
 - `data/real_images/texture_1024.pgm`
 
-Generated local demo outputs, not committed:
+Committed real-image demo outputs:
 
 - `results/building_sobel.pgm`
 - `results/portrait_gaussian.pgm`
 - `results/portrait_sharpen.pgm`
 - `results/texture_sobel.pgm`
 
-The real-image files are qualitative presentation/demo material. Official speedup claims use the synthetic benchmark CSV files under `results/`.
+The real-image files are qualitative presentation/demo material. Official speedup claims use the synthetic benchmark CSV files under `results/`. The demo outputs are committed so a teammate can immediately inspect the expected visual results after pulling the repository.
 
 ## Benchmark Parameters
 

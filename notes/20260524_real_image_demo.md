@@ -218,7 +218,7 @@ data\real_images\portrait_1024.pgm
 data\real_images\texture_1024.pgm
 ```
 
-Generated local demo outputs:
+Committed real-image demo outputs:
 
 ```text
 results\building_sobel.pgm
@@ -227,7 +227,7 @@ results\portrait_sharpen.pgm
 results\texture_sobel.pgm
 ```
 
-The generated output files are intentionally ignored by Git. They can be recreated with:
+The generated output files are now committed so a teammate can inspect the expected visual results immediately after pulling. They can be recreated with:
 
 ```powershell
 .\scripts\prepare_real_images.ps1
