@@ -115,10 +115,20 @@ python .\scripts\plot_results.py --input results\timing_results.csv --output-dir
 Optional PGM demo path:
 
 ```powershell
+.\scripts\prepare_real_images.ps1
 .\scripts\run_pgm_demo.ps1 -InputPath "data\sample_input.pgm" -OutputPath "results\demo_output.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
 ```
 
 The PGM demo is for presentation/demo use only. It does not replace the official synthetic benchmark matrix.
+
+Real demo examples:
+
+```powershell
+.\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\building_1024.pgm" -OutputPath "results\building_sobel.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
+.\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\portrait_1024.pgm" -OutputPath "results\portrait_gaussian.pgm" -FilterType "gaussian" -FilterSize 11 -Version "cuda_separable" -BlockSize "32x8"
+.\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\portrait_1024.pgm" -OutputPath "results\portrait_sharpen.pgm" -FilterType "sharpen" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
+.\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\texture_1024.pgm" -OutputPath "results\texture_sobel.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
+```
 
 ## Benchmark Parameters
 
@@ -263,6 +273,7 @@ Completed:
 - CUDA error checking macro.
 - Synthetic image/filter generation.
 - Optional dependency-free PGM image loading/writing demo path.
+- Real-image demo inputs under `data/real_images/`.
 - Filter type generation for box, Gaussian-like, sharpen, and Sobel-like filters.
 - Correctness comparison with max and mean absolute error.
 - Configurable benchmark runner with repeat/warm-up counts and selectable versions.

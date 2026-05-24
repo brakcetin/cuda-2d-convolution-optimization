@@ -47,10 +47,17 @@ The official benchmark uses synthetic images because that keeps every run reprod
 Demo command:
 
 ```powershell
+.\scripts\prepare_real_images.ps1
 .\scripts\run_pgm_demo.ps1 -InputPath "data\sample_input.pgm" -OutputPath "results\demo_output.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
 ```
 
 The PGM path supports simple `P2` and `P5` grayscale images with max value up to 255. Output is written as an ASCII `P2` file. Output normalization is enabled by default so edge filters such as Sobel are visible in image viewers.
+
+Current real-image examples:
+
+- building image: Sobel edge detection
+- portrait image: Gaussian blur and sharpen
+- texture image: Sobel edge detection
 
 ## Benchmark Strategy
 

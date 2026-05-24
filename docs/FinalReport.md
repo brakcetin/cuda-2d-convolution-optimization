@@ -13,6 +13,8 @@ This project studies how CUDA can accelerate grayscale 2D convolution compared w
 
 The final benchmark uses synthetic grayscale images and four filter types: box, Gaussian-like, sharpen, and Sobel-like. All CUDA results are checked against CPU reference outputs before being included in the analysis.
 
+The repository also includes a qualitative real-image demo path using grayscale PGM images. This demo is useful for presentation screenshots and visual inspection, but it is not used for official speedup claims because real-image content is less controlled than synthetic benchmark data.
+
 ### Proposal Alignment
 
 The final implementation follows and extends the original project proposal. The required sequential CPU baseline, naive CUDA implementation, shared-memory tiled implementation, constant-memory filter optimization, separable convolution path, correctness verification, and speedup analysis are all implemented. The benchmark matrix also includes the proposed large image sizes up to 4096x4096, multiple filter sizes from 3x3 to 11x11, and both kernel-only and total GPU timing.
@@ -111,6 +113,8 @@ Shared-memory halo indexing was another risk. The implementation loads a full ti
 Timing methodology required care. CPU time is measured with `std::chrono`; CUDA kernel time is measured with CUDA events. The benchmark records average, minimum, maximum, and standard deviation. It also separates kernel-only time from total GPU time, including allocation, host-to-device copy, device-to-host copy, and free time.
 
 Interpreting the new multi-output and register-tiled kernels also required care. These kernels change thread work assignment and local accumulator reuse, but they do not reduce the mathematical operation count. Therefore, they are best discussed as direct-convolution scheduling experiments, not as algorithmic reductions.
+
+Real-image demonstration was kept separate from official benchmarking. The project supports PGM input/output so that Sobel, sharpen, and Gaussian results can be shown visually, while the official performance matrix remains synthetic and reproducible.
 
 ## 7. Conclusion and Future Improvements
 

@@ -202,8 +202,16 @@ python .\scripts\plot_results.py --input results\timing_results.csv --output-dir
 Optional real-image PGM demo:
 
 ```powershell
+.\scripts\prepare_real_images.ps1
 .\scripts\run_pgm_demo.ps1 -InputPath "data\sample_input.pgm" -OutputPath "results\demo_output.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
 ```
+
+Recommended visual examples:
+
+- `building_1024.pgm` -> `building_sobel.pgm`
+- `portrait_1024.pgm` -> `portrait_gaussian.pgm`
+- `portrait_1024.pgm` -> `portrait_sharpen.pgm`
+- `texture_1024.pgm` -> `texture_sobel.pgm`
 
 Important:
 
