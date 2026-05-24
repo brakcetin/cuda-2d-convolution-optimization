@@ -208,3 +208,19 @@ git push
 ```
 
 The real-image demo outputs are intentionally committed now because the team decided to include expected visual examples for teammate reproduction. Keep any extra temporary PGM experiments out of commits unless they are added to the documented demo set.
+
+## 12. README Project Structure Refresh
+
+The README project tree was refreshed after committing the real-image demo outputs. The old tree only showed the first milestone files and did not include the current `scripts/`, `data/real_images/`, `notes/`, expanded `docs/`, PGM demo path, or committed demo outputs.
+
+Updated documentation now shows:
+
+- current source modules, including `image_io.cpp` and `image_io.h`
+- build, benchmark, plotting, and real-image helper scripts
+- committed real-image inputs and converted PGM files
+- official GTX 1650 CSV outputs
+- committed qualitative PGM demo outputs
+- final report, benchmark table, presentation, profiling, and result interpretation docs
+- chronological notes folder
+
+Interpretation: this makes the repository easier for a teammate to understand immediately after `git pull`, without needing to infer the current pipeline from scattered files.

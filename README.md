@@ -41,26 +41,61 @@ Final polish items:
 
 ```text
 cuda-2d-convolution-optimization/
-├── README.md
-├── CMakeLists.txt
-├── .gitignore
-├── src/
-│   ├── main.cu
-│   ├── convolution_cpu.cpp
-│   ├── convolution_cpu.h
-│   ├── convolution_cuda.cu
-│   ├── convolution_cuda.cuh
-│   ├── filters.cpp
-│   ├── filters.h
-│   ├── benchmark.cpp
-│   └── benchmark.h
-├── include/
-│   └── common.h
-├── results/
-│   ├── timing_results.csv
-│   └── correctness_results.csv
-└── docs/
+|-- README.md
+|-- CMakeLists.txt
+|-- .gitignore
+|-- src/
+|   |-- main.cu
+|   |-- benchmark.cpp / benchmark.h
+|   |-- convolution_cpu.cpp / convolution_cpu.h
+|   |-- convolution_cuda.cu / convolution_cuda.cuh
+|   |-- filters.cpp / filters.h
+|   `-- image_io.cpp / image_io.h
+|-- include/
+|   `-- common.h
+|-- scripts/
+|   |-- check_environment.ps1
+|   |-- configure_release.ps1
+|   |-- build_release.ps1
+|   |-- run_benchmarks.ps1
+|   |-- plot_results.py
+|   |-- prepare_real_images.ps1
+|   |-- run_pgm_demo.ps1
+|   `-- tool_paths.ps1
+|-- data/
+|   |-- sample_input.pgm
+|   `-- real_images/
+|       |-- building.png / building_1024.pgm
+|       |-- portrait.jpg / portrait_1024.pgm
+|       `-- texture.png / texture_1024.pgm
+|-- results/
+|   |-- timing_results.csv
+|   |-- correctness_results.csv
+|   |-- summary_best_versions.csv
+|   |-- timing_results_gtx1650_official.csv
+|   |-- correctness_results_gtx1650_official.csv
+|   |-- summary_best_versions_gtx1650_official.csv
+|   |-- building_sobel.pgm
+|   |-- portrait_gaussian.pgm
+|   |-- portrait_sharpen.pgm
+|   |-- texture_sobel.pgm
+|   `-- plots/
+|-- docs/
+|   |-- FinalReport.md
+|   |-- BenchmarkTables.md
+|   |-- ImplementationNotes.md
+|   |-- PresentationOutline.md
+|   |-- ResultInterpretation.md
+|   |-- ProfilingGuide.md
+|   |-- GpuComparison.md
+|   |-- papers/
+|   `-- Submissions/
+`-- notes/
+    |-- 20260523_*.md
+    `-- 20260524_*.md
 ```
+
+The `build/` directory is generated locally by CMake and is intentionally not part of the tracked source tree.
 
 ## Build Instructions
 
