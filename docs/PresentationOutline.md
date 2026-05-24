@@ -182,7 +182,8 @@ Content:
 - Memory hierarchy matters, especially constant memory for direct filters
 - Separable convolution is strongest when the filter supports it
 - Block-size tuning is important
-- Future work: Nsight profiling, RTX 4070 comparison, RGB images, real image input
+- Nsight profiling workflow is prepared; detailed counters require enabling NVIDIA performance-counter access
+- Future work: RTX 4070 comparison, RGB images, and richer image-format support
 
 Closing line:
 

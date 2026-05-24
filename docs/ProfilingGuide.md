@@ -33,6 +33,14 @@ The script:
 
 If NVIDIA performance counters are disabled, Nsight Compute may stop with `ERR_NVGPUCTRPERM`. In that case, enable GPU performance counters in the NVIDIA driver settings or rerun from an environment where the user has profiler counter access.
 
+On Windows, the usual fix is:
+
+1. Open NVIDIA Control Panel.
+2. Enable the Developer menu if it is hidden.
+3. Go to **Developer > Manage GPU Performance Counters**.
+4. Select **Allow access to the GPU performance counters to all users**.
+5. Apply the change and rerun `.\scripts\run_profiling.ps1`.
+
 Expected text outputs:
 
 ```text

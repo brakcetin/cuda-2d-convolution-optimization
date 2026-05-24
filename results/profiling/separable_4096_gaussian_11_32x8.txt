@@ -1,3 +1,3 @@
-==PROF== Connected to process 19332 (C:\Users\Burak\Burak\Projects\cuda-2d-convolution-optimization\build\convolution_benchmark.exe)
+==PROF== Connected to process 12612 (C:\Users\Burak\Burak\Projects\cuda-2d-convolution-optimization\build\convolution_benchmark.exe)
 ==ERROR== ERR_NVGPUCTRPERM - The user does not have permission to access NVIDIA GPU Performance Counters on the target device 0. For instructions on enabling permissions and to get more information see https://developer.nvidia.com/ERR_NVGPUCTRPERM
-==PROF== Disconnected from process 19332
+==PROF== Disconnected from process 12612

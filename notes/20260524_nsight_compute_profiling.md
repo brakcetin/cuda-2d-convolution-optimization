@@ -124,3 +124,26 @@ After enabling NVIDIA performance-counter access, rerun:
 ```powershell
 .\scripts\run_profiling.ps1
 ```
+
+## Second Run
+
+The profiling command was run again after the first documentation update:
+
+```powershell
+.\scripts\run_profiling.ps1
+```
+
+Result: the benchmark executable still launched and passed correctness for the first profiling case, but Nsight Compute still reported `ERR_NVGPUCTRPERM`. Therefore, performance-counter access is not enabled yet on this Windows/NVIDIA setup.
+
+Practical fix to try next:
+
+1. Open NVIDIA Control Panel.
+2. Enable the Developer menu if it is hidden.
+3. Open **Developer > Manage GPU Performance Counters**.
+4. Select **Allow access to the GPU performance counters to all users**.
+5. Apply the setting.
+6. Rerun:
+
+```powershell
+.\scripts\run_profiling.ps1
+```
