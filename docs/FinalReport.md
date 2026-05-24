@@ -94,6 +94,20 @@ The most important observation is that kernel-only speedup and total GPU speedup
 
 `cuda_separable` wins the strongest kernel-only and total-time cases because it reduces an 11x11 direct convolution from 121 filter operations per pixel to two 11-element 1D passes. However, `cuda_separable` is used only for box and Gaussian-like filters. For direct filters such as sharpen and Sobel-like kernels, `cuda_shared_constant_filter` remains the strongest kernel-time method in the official results.
 
+### Profiling Attempt and Observations
+
+Nsight Compute profiling was prepared for a small set of representative GTX 1650 cases to support the benchmark interpretation without replacing the official CSV timing methodology. On the current Windows setup, Nsight Compute successfully launched and attached to the benchmark process, but detailed GPU counter collection was blocked by NVIDIA's performance-counter permission setting (`ERR_NVGPUCTRPERM`). Therefore, the final performance claims remain based on the committed benchmark CSV files, and the profiler logs are kept as reproducibility evidence for the attempted profiling workflow.
+
+The selected profiling cases still match the benchmark findings:
+
+| Case | Kernel focus | Interpretation |
+|---|---|---|
+| 4096x4096, 11x11 Gaussian-like | `cuda_separable` | The strongest result comes mainly from algorithmic work reduction: two 1D passes replace a full 2D 11x11 convolution. |
+| 4096x4096, 11x11 Sobel-like | `cuda_shared_constant_filter` | Direct convolution benefits from shared input reuse and constant-memory filter reads when separable convolution is not applicable. |
+| 1024x1024, 7x7 Sobel-like | direct CUDA versions | Kernel choice and block shape remain workload-dependent, which supports reporting best-version summaries instead of assuming one universal launch shape. |
+
+The profiler logs are stored under `results/profiling/`. If GPU performance-counter access is enabled later, the same script can be rerun to collect detailed occupancy, memory throughput, and warp-state metrics for these cases.
+
 ## 5. Academic Background
 
 The project follows the memory-hierarchy theme found in GPU convolution literature. Direct convolution has high arithmetic intensity for larger filters, but it also repeatedly reads overlapping input neighborhoods. This makes memory movement and data reuse central to performance.
@@ -124,7 +138,7 @@ The project successfully implements and benchmarks a sequential CPU baseline and
 
 The strongest kernel-only result comes from separable convolution on a 4096x4096, 11x11 Gaussian-like filter, reaching 744.216x speedup. The strongest total-time result is the same separable case, reaching 56.205x speedup. The strongest direct-convolution kernel result comes from shared+constant filtering on a 4096x4096, 11x11 Sobel-like filter, reaching 432.778x speedup. This shows that both algorithmic structure and memory hierarchy matter.
 
-Future improvements could include Nsight Compute profiling, automated report table generation, RTX 4070 comparison, RGB image support, and richer image-format support. A simple dependency-free PGM path is included for demonstration, while the official benchmark remains synthetic for reproducibility. More advanced convolution methods such as FFT, Winograd, cuDNN, and OpenCV/GpuCV integration remain outside the current project scope.
+Future improvements could include automated report table generation, RTX 4070 comparison, RGB image support, and richer image-format support. A simple dependency-free PGM path is included for demonstration, while the official benchmark remains synthetic for reproducibility. More advanced convolution methods such as FFT, Winograd, cuDNN, and OpenCV/GpuCV integration remain outside the current project scope.
 
 No graphical UI is required for this project. The course deliverables focus on source code, GitHub repository link, implementation report, benchmark tables/graphs, and a 10-minute presentation. For that reason, the implementation prioritizes reproducible command-line benchmarking and clear CSV/plot outputs.
 

@@ -168,3 +168,23 @@ No UI is required. A graphical interface would not improve the grading criteria 
 - Timing can be misleading if only one run is measured. Solution: configurable repeats, warmups, min/max/stddev, and GFLOP/s.
 - GPU transfer overhead affects practical speedup. Solution: CSV includes kernel-only timing, total GPU timing, and allocation/copy/free breakdown.
 - First CUDA calls and small workloads can have high total overhead. Solution: report kernel-only and total timing separately and use larger image sizes for final analysis.
+
+## Nsight Compute Profiling
+
+Profiling is used as supporting evidence, not as the official timing source. The official benchmark remains the committed synthetic GTX 1650 CSV matrix because it is repeat-based, scriptable, and already checked for correctness.
+
+The helper command is:
+
+```powershell
+.\scripts\run_profiling.ps1
+```
+
+The selected profiling cases are intentionally small in count:
+
+- 4096x4096, 11x11, Gaussian-like, `cuda_separable`, 32x8 block
+- 4096x4096, 11x11, Sobel-like, `cuda_shared_constant_filter`, 32x16 block
+- 1024x1024, 7x7, Sobel-like, direct CUDA versions with 16x16 and 32x8 blocks
+
+Interpretation: the profiler evidence should explain the benchmark trends, especially algorithmic reduction for separable convolution, shared/constant memory behavior for direct convolution, and block-shape sensitivity for direct kernels.
+
+On the current Windows setup, Nsight Compute can launch and attach to the benchmark executable, but detailed counter collection is blocked by NVIDIA's `ERR_NVGPUCTRPERM` permission setting. The script and selected cases are committed so the profiling workflow can be rerun immediately after enabling GPU performance-counter access.

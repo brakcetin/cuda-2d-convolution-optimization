@@ -12,6 +12,7 @@ out/
 *.log
 *.tmp
 *.csv.tmp
+results/profiling/*.ncu-rep
 results/demo_output.pgm
 cmake-build-*/
 CMakeFiles/

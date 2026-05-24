@@ -61,6 +61,7 @@ cuda-2d-convolution-optimization/
 |   |-- plot_results.py
 |   |-- prepare_real_images.ps1
 |   |-- run_pgm_demo.ps1
+|   |-- run_profiling.ps1
 |   `-- tool_paths.ps1
 |-- data/
 |   |-- sample_input.pgm
@@ -79,6 +80,7 @@ cuda-2d-convolution-optimization/
 |   |-- portrait_gaussian.pgm
 |   |-- portrait_sharpen.pgm
 |   |-- texture_sobel.pgm
+|   |-- profiling/
 |   `-- plots/
 |-- docs/
 |   |-- FinalReport.md
@@ -409,6 +411,18 @@ This repository satisfies the original proposal and Submission 2 requirements:
 
 No UI is required for this course project. The official deliverables are source code, GitHub link, implementation report, benchmark tables/graphs, and a 10-minute presentation. The project intentionally focuses on CUDA implementation quality, correctness verification, reproducible benchmarking, and result interpretation instead of building a graphical interface.
 
+## Nsight Compute Profiling
+
+Optional profiling evidence can be collected for three representative cases:
+
+```powershell
+.\scripts\run_profiling.ps1
+```
+
+The script writes text summaries under `results/profiling/` and restores the official GTX 1650 CSV files after profiling. Profiling is supporting evidence only; official speedup claims still come from the committed synthetic benchmark CSV files.
+
+Current note: on this Windows setup, Nsight Compute can attach to the benchmark executable, but detailed GPU counter collection is blocked by NVIDIA's `ERR_NVGPUCTRPERM` permission setting until performance-counter access is enabled.
+
 Report-ready plots:
 
 - `results/plots/speedup_by_version.png`
@@ -444,6 +458,7 @@ Completed:
 - Register-tiled direct CUDA implementation.
 - Separable CUDA implementation for separable box and Gaussian-like filters.
 - Plot generation script for benchmark graphs.
+- Nsight Compute profiling helper for representative kernels.
 - Block-size speedup plot for the 1024x1024, 7x7, box-filter case.
 - Direct-version speedup plot for the 1024x1024, 7x7, Sobel-like case.
 - CSV result generation.
@@ -457,4 +472,4 @@ Limitations:
 - 4096x4096 is included in the official benchmark matrix with 5 repeats. Older lower-repeat 4096 stress CSVs are kept only for historical comparison.
 - Best block shape is workload-dependent; the summary CSV records winners instead of assuming one block shape is universally optimal.
 - GPU total time is a per-run estimate built from fixed allocation/copy/free overhead plus each timed kernel sample; warm-up kernels are excluded.
-- Profiling metrics from Nsight tools are not collected automatically yet.
+- Nsight Compute profiling is collected only for representative kernels, not for the full benchmark matrix.

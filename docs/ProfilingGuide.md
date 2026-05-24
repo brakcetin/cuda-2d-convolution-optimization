@@ -16,6 +16,39 @@ ncu --version
 
 If Nsight Compute is not available, document that profiling was not collected and keep the benchmark CSV analysis as the main evidence.
 
+## Project Script
+
+The repository includes a helper script that profiles the representative cases below:
+
+```powershell
+.\scripts\run_profiling.ps1
+```
+
+The script:
+
+- detects `ncu`
+- finds `build\Release\convolution_benchmark.exe` or `build\convolution_benchmark.exe`
+- writes profiler text logs to `results\profiling\`
+- restores the official GTX 1650 CSV files after profiling
+
+If NVIDIA performance counters are disabled, Nsight Compute may stop with `ERR_NVGPUCTRPERM`. In that case, enable GPU performance counters in the NVIDIA driver settings or rerun from an environment where the user has profiler counter access.
+
+Expected text outputs:
+
+```text
+results\profiling\separable_4096_gaussian_11_32x8.txt
+results\profiling\shared_constant_4096_sobel_11_32x16.txt
+results\profiling\direct_compare_1024_sobel_7.txt
+```
+
+Binary `.ncu-rep` exports may be useful locally, but they are ignored by Git to avoid committing large profiler artifacts.
+
+To keep running all cases even when one case fails because of permissions, use:
+
+```powershell
+.\scripts\run_profiling.ps1 -ContinueOnError
+```
+
 ## Representative Cases
 
 Profile only selected cases instead of the full 1408-row matrix.
@@ -78,4 +111,4 @@ Do not paste the full profiler output into the report. Use one small table or pa
 - Nsight profiling can slow execution significantly.
 - Profiling results may differ between GTX 1650 and RTX 4070.
 - Official timing claims should still come from committed CSVs.
-- If profiling is added, save screenshots or exported reports under `docs/profiling/` or `results/profiling/`.
+- Text profiler summaries are saved under `results/profiling/`.
