@@ -11,7 +11,26 @@ The dashboard is the safe presentation fallback. The live demo depends on the CU
 
 ## Setup
 
-Run from the repository root:
+Run from the repository root in Windows PowerShell:
+
+```powershell
+cd C:\Users\Burak\Burak\Projects\cuda-2d-convolution-optimization
+git pull
+git status --short
+.\scripts\check_environment.ps1
+.\scripts\configure_release.ps1
+.\scripts\build_release.ps1
+python -m pip install -r demo_app\requirements.txt
+.\scripts\run_demo_dashboard.ps1
+```
+
+Open:
+
+```text
+http://127.0.0.1:5000
+```
+
+The shorter form, if the repository is already pulled and built, is:
 
 ```powershell
 .\scripts\configure_release.ps1
@@ -32,10 +51,31 @@ pip install -r requirements.txt
 python server.py
 ```
 
-Open:
+Manual Flask form:
+
+```powershell
+cd C:\Users\Burak\Burak\Projects\cuda-2d-convolution-optimization
+python -m pip install -r demo_app\requirements.txt
+cd demo_app
+python server.py
+```
+
+Then open:
 
 ```text
 http://127.0.0.1:5000
+```
+
+If port `5000` is already busy:
+
+```powershell
+.\scripts\run_demo_dashboard.ps1 -Port 5001
+```
+
+Then open:
+
+```text
+http://127.0.0.1:5001
 ```
 
 ## Optional Executable Path
@@ -55,6 +95,15 @@ python server.py
 ```
 
 ## Live Demo Notes
+
+Recommended presentation cases:
+
+```text
+building.png  -> sobel, 3x3, cuda_shared_constant_filter, 16x16
+portrait.jpg  -> gaussian, 11x11, cuda_separable, 32x8
+portrait.jpg  -> sharpen, 3x3, cuda_shared_constant_filter, 16x16
+texture.png   -> sobel, 3x3, cuda_shared_constant_filter, 16x16
+```
 
 The live demo runs the executable like this:
 
@@ -80,3 +129,5 @@ Official performance claims should still come from the committed synthetic bench
 - **CUDA executable not found:** run `scripts/configure_release.ps1` and `scripts/build_release.ps1`.
 - **Live demo fails:** use Dashboard Mode and fallback sample outputs; the committed benchmark evidence remains available.
 - **Separable error:** choose `box` or `gaussian` when using `cuda_separable`.
+- **Virtual environment has no pip:** return to the repository root and run `python -m pip install -r demo_app\requirements.txt`.
+- **Port 5000 is busy:** run `scripts/run_demo_dashboard.ps1 -Port 5001`.

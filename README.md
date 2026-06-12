@@ -267,6 +267,107 @@ Use this pipeline after pulling the repository on any CUDA-capable machine.
 
    Open `http://127.0.0.1:5000`.
 
+## Demo Dashboard Setup And Run
+
+Use these steps when you want to show the project during the presentation. Run all commands in **Windows PowerShell**.
+
+1. Open PowerShell and go to the repository root:
+
+   ```powershell
+   cd C:\Users\Burak\Burak\Projects\cuda-2d-convolution-optimization
+   ```
+
+2. Pull the latest GitHub version:
+
+   ```powershell
+   git pull
+   git status --short
+   ```
+
+   `git status --short` should print nothing before starting a clean presentation run.
+
+3. Check CUDA, CMake, Visual Studio compiler, and NVIDIA driver tools:
+
+   ```powershell
+   .\scripts\check_environment.ps1
+   ```
+
+4. Configure and build the CUDA executable:
+
+   ```powershell
+   .\scripts\configure_release.ps1
+   .\scripts\build_release.ps1
+   ```
+
+   The demo backend automatically searches for:
+
+   ```text
+   build\Release\convolution_benchmark.exe
+   build\convolution_benchmark.exe
+   ```
+
+5. Install the Python packages for the local web app:
+
+   ```powershell
+   python -m pip install -r demo_app\requirements.txt
+   ```
+
+   Optional virtual environment form:
+
+   ```powershell
+   cd demo_app
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   cd ..
+   ```
+
+6. Start the dashboard:
+
+   ```powershell
+   .\scripts\run_demo_dashboard.ps1
+   ```
+
+7. Open the app in a browser:
+
+   ```text
+   http://127.0.0.1:5000
+   ```
+
+8. Use **Dashboard Mode** first:
+
+   - Show GTX 1650 and RTX 4070 row counts and correctness badges.
+   - Show CPU time, CUDA kernel time, total GPU time, speedup, and error metrics.
+   - Show plots and explain kernel-only speedup versus total GPU speedup.
+
+9. Use **Live Image Demo Mode** for a real image:
+
+   - Upload `data\real_images\building.png`.
+   - Select `sobel`, filter size `3`, version `cuda_shared_constant_filter`, block size `16x16`.
+   - Click **Run CUDA Demo**.
+   - Show the original image, filtered output image, timing metrics, and correctness result.
+
+   A second good demo is:
+
+   - Upload `data\real_images\portrait.jpg`.
+   - Select `gaussian`, filter size `11`, version `cuda_separable`, block size `32x8`.
+
+10. Stop the dashboard after the presentation:
+
+    ```text
+    Press Ctrl+C in the PowerShell window running the Flask server.
+    ```
+
+Presentation note: Dashboard Mode is the safe fallback and works from committed CSV/plot files. Live Image Demo Mode runs the real CUDA executable. Benchmark timing mostly depends on image dimensions, filter size, CUDA version, block size, GPU model, and transfer overhead; it does not mainly depend on what the image semantically contains.
+
+Troubleshooting:
+
+- If Flask or Pillow is missing, run `python -m pip install -r demo_app\requirements.txt`.
+- If the app says the CUDA executable is missing, rerun `.\scripts\configure_release.ps1` and `.\scripts\build_release.ps1`.
+- If port `5000` is busy, run `.\scripts\run_demo_dashboard.ps1 -Port 5001` and open `http://127.0.0.1:5001`.
+- If `cuda_separable` gives a validation error, choose `box` or `gaussian`; separable convolution is not valid for `sobel` or `sharpen` in this project.
+- If a virtual environment is created but `pip` is unavailable, use the non-venv command from the repository root: `python -m pip install -r demo_app\requirements.txt`.
+
 Generate plots after benchmark CSV files are populated:
 
 ```powershell

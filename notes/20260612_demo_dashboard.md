@@ -75,3 +75,60 @@ Uploaded image dimensions determine most of the convolution workload. Timing dep
 ## Presentation Fallback
 
 If the live CUDA demo fails, Dashboard Mode and committed fallback images remain available. This protects the presentation from environment issues.
+
+## README Run Instructions Update
+
+After the demo dashboard was implemented, the main README and `demo_app\README.md` were updated with a teammate-facing setup flow. The goal was to make the presentation demo reproducible after a fresh GitHub pull.
+
+Chronological run sequence from the repository root:
+
+```powershell
+cd C:\Users\Burak\Burak\Projects\cuda-2d-convolution-optimization
+git pull
+git status --short
+.\scripts\check_environment.ps1
+.\scripts\configure_release.ps1
+.\scripts\build_release.ps1
+python -m pip install -r demo_app\requirements.txt
+.\scripts\run_demo_dashboard.ps1
+```
+
+Browser URL:
+
+```text
+http://127.0.0.1:5000
+```
+
+If port `5000` is busy:
+
+```powershell
+.\scripts\run_demo_dashboard.ps1 -Port 5001
+```
+
+Then open:
+
+```text
+http://127.0.0.1:5001
+```
+
+Recommended live demo cases:
+
+```text
+building.png  -> sobel, 3x3, cuda_shared_constant_filter, 16x16
+portrait.jpg  -> gaussian, 11x11, cuda_separable, 32x8
+portrait.jpg  -> sharpen, 3x3, cuda_shared_constant_filter, 16x16
+texture.png   -> sobel, 3x3, cuda_shared_constant_filter, 16x16
+```
+
+Interpretation for the presentation:
+
+- Dashboard Mode is the safe fallback because it reads committed CSV and plot files.
+- Live Image Demo Mode proves that the built CUDA executable can run on a real uploaded image.
+- The performance score should be explained as a function of image dimensions, filter size, CUDA version, block size, GPU model, and transfer overhead. The semantic content of the image changes the visual output, not the convolution workload size.
+
+Troubleshooting notes:
+
+- If Flask or Pillow is missing, run `python -m pip install -r demo_app\requirements.txt`.
+- If the CUDA executable is missing, rerun the configure and build scripts.
+- If a virtual environment is created but `pip` is unavailable, use the system Python command from the repository root.
+- `cuda_separable` is only valid for `box` and `gaussian` filters.
