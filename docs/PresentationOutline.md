@@ -73,6 +73,7 @@ Time: 75 seconds
 Content:
 
 - GPU: NVIDIA GeForce GTX 1650 with Max-Q Design
+- Secondary GPU: NVIDIA GeForce RTX 4070 Laptop GPU
 - Official matrix: 512, 1024, 2048, 4096 images
 - Filters: 3x3, 5x5, 7x7, 11x11
 - Filter types: box, Gaussian-like, sharpen, Sobel-like
@@ -94,6 +95,7 @@ Content:
 - Metrics: max absolute error and mean absolute error
 - Tolerance: `1e-4`
 - Official benchmark: 1408 rows, 0 failures
+- RTX 4070 secondary benchmark: 1408 rows, 0 failures
 - 4096x4096 is included in the official 5-repeat benchmark matrix
 
 Speaker note:
@@ -183,7 +185,8 @@ Content:
 - Separable convolution is strongest when the filter supports it
 - Block-size tuning is important
 - Nsight profiling workflow is prepared; detailed counters require enabling NVIDIA performance-counter access
-- Future work: RTX 4070 comparison, RGB images, and richer image-format support
+- RTX 4070 comparison is included as secondary hardware evidence
+- Future work: RGB images, richer image-format support, and detailed Nsight counter analysis
 
 Closing line:
 
@@ -245,4 +248,4 @@ python .\scripts\plot_results.py --input results\timing_results.csv --output-dir
 - Why no UI? Submission 2 asks for source code, report, benchmark results, GitHub link, and presentation, not an app interface.
 - Why not use separable convolution for Sobel/sharpen? The project reports separable only for filters generated from a separable 1D representation.
 - Why is total GPU speedup lower than kernel-only speedup? Total time includes allocation and host-device transfers.
-- Why GTX 1650 as official GPU? It is the consistent local benchmark machine; RTX 4070 can be added as secondary comparison if available.
+- Why GTX 1650 as official GPU? It is the consistent local benchmark machine; RTX 4070 is included as secondary comparison, not as a replacement for the official baseline.

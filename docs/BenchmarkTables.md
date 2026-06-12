@@ -8,10 +8,14 @@ Source files:
 - `results/timing_results_gtx1650_official.csv`
 - `results/correctness_results_gtx1650_official.csv`
 - `results/summary_best_versions_gtx1650_official.csv`
+- `results/timing_results_rtx4070.csv`
+- `results/correctness_results_rtx4070.csv`
+- `results/summary_best_versions_rtx4070.csv`
 
 Official benchmark hardware:
 
 - NVIDIA GeForce GTX 1650 with Max-Q Design
+- Secondary comparison hardware: NVIDIA GeForce RTX 4070 Laptop GPU
 
 Official benchmark matrix:
 
@@ -39,6 +43,27 @@ These tables are intended for report and presentation use. The full raw matrix s
 | Best official total GPU speedup | 56.205x, 4096x4096, 11x11 gaussian, `cuda_separable`, 32x8 block |
 | Best direct-convolution kernel-only speedup | 432.778x, 4096x4096, 11x11 sobel, `cuda_shared_constant_filter`, 32x16 block |
 | Best new Phase 4 kernel speedup | 409.608x, 512x512, 3x3 sobel, `cuda_register_tiled`, 16x16 block |
+
+## Secondary RTX 4070 Results
+
+The RTX 4070 Laptop GPU benchmark uses the same 1408-row matrix and has 0 failed correctness rows. It is kept in separate CSV files so the GTX 1650 official baseline remains reproducible.
+
+| Metric | Result |
+|---|---|
+| Best RTX kernel-only speedup | 1338.130x, 1024x1024, 11x11 box, `cuda_separable`, 16x16 block |
+| Best RTX total GPU speedup | 79.304x, 4096x4096, 11x11 sobel, `cuda_shared_constant_filter`, 32x16 block |
+| Best RTX direct-convolution kernel-only speedup | 784.821x, 4096x4096, 11x11 sobel, `cuda_shared_constant_filter`, 32x16 block |
+
+### RTX Top Total GPU Speedups
+
+| Image | Filter | Type | Version | Block | CPU ms | Kernel ms | Total ms | Kernel speedup | Total speedup |
+|---|---:|---|---|---:|---:|---:|---:|---:|---:|
+| 4096x4096 | 11x11 | sobel | `cuda_shared_constant_filter` | 32x16 | 1336.953 | 1.704 | 16.859 | 784.821 | 79.304 |
+| 4096x4096 | 11x11 | gaussian | `cuda_shared_constant_filter` | 16x16 | 1334.080 | 1.784 | 17.088 | 747.741 | 78.070 |
+| 4096x4096 | 11x11 | gaussian | `cuda_shared_constant_filter` | 32x16 | 1334.080 | 1.769 | 17.152 | 754.035 | 77.778 |
+| 4096x4096 | 11x11 | box | `cuda_shared_constant_filter` | 32x16 | 1341.528 | 1.724 | 17.284 | 778.174 | 77.618 |
+| 4096x4096 | 11x11 | sharpen | `cuda_shared_constant_filter` | 32x8 | 1335.553 | 1.774 | 17.282 | 752.787 | 77.282 |
+| 4096x4096 | 11x11 | box | `cuda_shared_constant_filter` | 32x8 | 1341.528 | 1.730 | 17.377 | 775.669 | 77.200 |
 
 ## Representative Cases
 
@@ -103,3 +128,4 @@ These tables are intended for report and presentation use. The full raw matrix s
 - `results/plots/speedup_by_filter_type_1024_7x7.png`
 - `results/plots/speedup_by_block_size_1024_7x7_box.png`
 - `results/plots/direct_versions_speedup_1024_7x7_sobel.png`
+- `results/plots_rtx4070/`

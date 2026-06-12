@@ -1,6 +1,6 @@
 # Result Interpretation
 
-This document explains how to read the official GTX 1650 benchmark results for the final report and presentation.
+This document explains how to read the official GTX 1650 benchmark results and the secondary RTX 4070 comparison results for the final report and presentation.
 
 ## Official Result Source
 
@@ -13,6 +13,13 @@ Official files:
 - `results/correctness_results_gtx1650_official.csv`
 - `results/summary_best_versions_gtx1650_official.csv`
 
+Secondary RTX 4070 files:
+
+- `results/timing_results_rtx4070.csv`
+- `results/correctness_results_rtx4070.csv`
+- `results/summary_best_versions_rtx4070.csv`
+- `results/plots_rtx4070/`
+
 Official benchmark matrix:
 
 - GPU: NVIDIA GeForce GTX 1650 with Max-Q Design
@@ -24,6 +31,13 @@ Official benchmark matrix:
 - Warmups: 1
 - Timing rows: 1408
 - Failed correctness rows: 0
+
+Secondary RTX 4070 matrix:
+
+- GPU: NVIDIA GeForce RTX 4070 Laptop GPU
+- Timing rows: 1408
+- Failed correctness rows: 0
+- Summary rows: 64
 
 ## CPU Versus CUDA
 
@@ -82,6 +96,19 @@ The best direct-convolution kernel-only result is:
 
 This supports the project title: memory-hierarchy-aware CUDA implementation matters when separable convolution is not mathematically available.
 
+## GTX 1650 Versus RTX 4070
+
+The RTX 4070 run uses the same benchmark matrix as the GTX 1650 run. It confirms that the code and benchmark pipeline scale to stronger hardware while preserving correctness.
+
+Headline comparison:
+
+- GTX best kernel-only speedup: 744.216x, `cuda_separable`, 4096x4096, 11x11 Gaussian-like.
+- RTX best kernel-only speedup: 1338.130x, `cuda_separable`, 1024x1024, 11x11 box.
+- GTX best direct-convolution speedup: 432.778x, `cuda_shared_constant_filter`, 4096x4096, 11x11 Sobel-like.
+- RTX best direct-convolution speedup: 784.821x, `cuda_shared_constant_filter`, 4096x4096, 11x11 Sobel-like.
+
+The important interpretation does not change: separable convolution dominates when the filter allows algorithmic reduction, and shared+constant memory is the strongest direct-convolution strategy for large Sobel-like cases. The RTX 4070 mainly changes the magnitude of the timings and speedups.
+
 ## Why Block Shape Matters
 
 The block-size sweep uses 8x8, 16x16, 32x8, and 32x16. No single block shape wins every case.
@@ -115,3 +142,5 @@ However, the register-tiled kernel does not dominate the strongest large direct-
 Use this interpretation in the final report:
 
 CUDA gives strong acceleration for 2D convolution because output pixels are independent and the workload is highly data-parallel. The best implementation depends on filter structure and timing perspective. Separable convolution is strongest for box and Gaussian-like filters because it reduces the operation count. For direct sharpen and Sobel-like filters, shared-memory input tiling plus constant-memory filter coefficients gives the strongest large-filter performance. Block shape also affects performance, so the final benchmark treats launch configuration as an experimental variable.
+
+Use the RTX 4070 results as secondary evidence: they show hardware scaling, but the GTX 1650 remains the official baseline for reproducibility.

@@ -54,6 +54,7 @@ The benchmark also sweeps block shapes: 8x8, 16x16, 32x8, and 32x16. This makes 
 Official benchmark hardware:
 
 - NVIDIA GeForce GTX 1650 with Max-Q Design
+- Secondary comparison hardware: NVIDIA GeForce RTX 4070 Laptop GPU
 
 Official benchmark matrix:
 
@@ -79,6 +80,20 @@ Historical supplemental files:
 | Best official total GPU speedup | 56.205x, 4096x4096, 11x11 Gaussian-like, `cuda_separable`, 32x8 block |
 | Best direct-convolution kernel-only speedup | 432.778x, 4096x4096, 11x11 Sobel-like, `cuda_shared_constant_filter`, 32x16 block |
 | Best new Phase 4 kernel speedup | 409.608x, 512x512, 3x3 Sobel-like, `cuda_register_tiled`, 16x16 block |
+
+### Secondary RTX 4070 Comparison
+
+The teammate also ran the same benchmark matrix on an NVIDIA GeForce RTX 4070 Laptop GPU. These results are stored separately and are used as secondary hardware-scaling evidence, not as a replacement for the official GTX 1650 baseline.
+
+| Metric | GTX 1650 Max-Q | RTX 4070 Laptop GPU |
+|---|---|---|
+| Timing rows | 1408 | 1408 |
+| Failed correctness rows | 0 | 0 |
+| Best kernel-only speedup | 744.216x, `cuda_separable`, 4096x4096, 11x11 Gaussian-like | 1338.130x, `cuda_separable`, 1024x1024, 11x11 box |
+| Best total GPU speedup | 56.205x, `cuda_separable`, 4096x4096, 11x11 Gaussian-like | 79.304x, `cuda_shared_constant_filter`, 4096x4096, 11x11 Sobel-like |
+| Best direct-convolution speedup | 432.778x, `cuda_shared_constant_filter`, 4096x4096, 11x11 Sobel-like | 784.821x, `cuda_shared_constant_filter`, 4096x4096, 11x11 Sobel-like |
+
+The RTX 4070 results confirm that the implementation scales to stronger hardware while preserving the same correctness behavior. They also show that the best total-time winner can differ from the best kernel-only winner because total GPU time includes allocation and host-device transfer overhead.
 
 ### Representative Cases
 
@@ -136,9 +151,9 @@ Real-image demonstration was kept separate from official benchmarking. The proje
 
 The project successfully implements and benchmarks a sequential CPU baseline and multiple CUDA convolution variants. All official CUDA benchmark rows pass correctness verification. The final results show substantial speedups on the GTX 1650, especially for larger images and filters.
 
-The strongest kernel-only result comes from separable convolution on a 4096x4096, 11x11 Gaussian-like filter, reaching 744.216x speedup. The strongest total-time result is the same separable case, reaching 56.205x speedup. The strongest direct-convolution kernel result comes from shared+constant filtering on a 4096x4096, 11x11 Sobel-like filter, reaching 432.778x speedup. This shows that both algorithmic structure and memory hierarchy matter.
+The strongest official GTX 1650 kernel-only result comes from separable convolution on a 4096x4096, 11x11 Gaussian-like filter, reaching 744.216x speedup. The strongest official GTX 1650 total-time result is the same separable case, reaching 56.205x speedup. The strongest official GTX 1650 direct-convolution kernel result comes from shared+constant filtering on a 4096x4096, 11x11 Sobel-like filter, reaching 432.778x speedup. The secondary RTX 4070 run reaches higher speedups while preserving the same broad interpretation: separable convolution is strongest for separable filters, and shared+constant memory is strongest for large direct filters. This shows that both algorithmic structure and memory hierarchy matter.
 
-Future improvements could include automated report table generation, RTX 4070 comparison, RGB image support, and richer image-format support. A simple dependency-free PGM path is included for demonstration, while the official benchmark remains synthetic for reproducibility. More advanced convolution methods such as FFT, Winograd, cuDNN, and OpenCV/GpuCV integration remain outside the current project scope.
+Future improvements could include automated report table generation, RGB image support, richer image-format support, and detailed Nsight Compute counter analysis after NVIDIA performance-counter access is enabled. A simple dependency-free PGM path is included for demonstration, while the official benchmark remains synthetic for reproducibility. More advanced convolution methods such as FFT, Winograd, cuDNN, and OpenCV/GpuCV integration remain outside the current project scope.
 
 No graphical UI is required for this project. The course deliverables focus on source code, GitHub repository link, implementation report, benchmark tables/graphs, and a 10-minute presentation. For that reason, the implementation prioritizes reproducible command-line benchmarking and clear CSV/plot outputs.
 

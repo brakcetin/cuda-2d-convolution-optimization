@@ -26,7 +26,7 @@ Final polish items:
 
 - Convert the Markdown report into the final PDF submission.
 - Prepare the 10-minute presentation from the outline and committed plots.
-- Optionally add RTX 4070 secondary results if the teammate runs the same benchmark matrix.
+- Use the committed RTX 4070 results as secondary hardware comparison evidence.
 
 ## Technologies Used
 
@@ -367,6 +367,7 @@ image_width,image_height,filter_size,filter_type,best_kernel_time_version,best_k
 Official benchmark hardware:
 
 - NVIDIA GeForce GTX 1650 with Max-Q Design
+- Secondary comparison hardware: NVIDIA GeForce RTX 4070 Laptop GPU
 
 Official benchmark matrix:
 
@@ -388,6 +389,14 @@ Official result summary:
 - Best official direct-convolution kernel-only speedup is `432.778406x` for `cuda_shared_constant_filter` on 4096x4096 with 11x11 Sobel-like filter using a 32x16 block.
 - Best official new-kernel speedup is `409.607974x` for `cuda_register_tiled` on 512x512 with 3x3 Sobel-like filter using a 16x16 block.
 - `cuda_separable` is reported only for box and Gaussian-like filters.
+
+Secondary RTX 4070 result summary:
+
+- 1408 benchmark rows were collected.
+- All CUDA correctness checks passed.
+- Best RTX kernel-only speedup is `1338.129858x` for `cuda_separable` on 1024x1024 with 11x11 box filter using a 16x16 block.
+- Best RTX total GPU speedup is `79.304347x` for `cuda_shared_constant_filter` on 4096x4096 with 11x11 Sobel-like filter using a 32x16 block.
+- RTX plots are available under `results/plots_rtx4070/`.
 
 Historical supplemental 4096x4096 stress files:
 
