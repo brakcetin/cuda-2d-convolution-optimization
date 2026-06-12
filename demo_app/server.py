@@ -199,18 +199,15 @@ def prepare_upload(file_storage):
     upload_original = UPLOAD_DIR / f"{run_id}{extension}"
     file_storage.save(upload_original)
 
-    image = Image.open(upload_original).convert("L")
+    original = Image.open(upload_original)
+    if original.mode not in ("L", "RGB", "RGBA"):
+        original = original.convert("RGB")
+    image = original.convert("L")
     resized = False
-    max_side = max(image.width, image.height)
-    if max_side > 4096:
-        scale = 4096.0 / float(max_side)
-        new_size = (max(1, int(image.width * scale)), max(1, int(image.height * scale)))
-        image = image.resize(new_size, Image.Resampling.LANCZOS)
-        resized = True
 
     preview_path = OUTPUT_DIR / f"{run_id}_original.png"
     input_pgm_path = UPLOAD_DIR / f"{run_id}_input.pgm"
-    image.save(preview_path, format="PNG")
+    original.save(preview_path, format="PNG")
     save_pgm_l(image, input_pgm_path)
     return run_id, image.width, image.height, resized, preview_path, input_pgm_path
 
@@ -281,7 +278,7 @@ def run_cuda_demo(input_pgm, output_pgm, filter_type, filter_size, version, bloc
         cwd=REPO_ROOT,
         text=True,
         capture_output=True,
-        timeout=60,
+        timeout=300,
         check=False,
     )
     if completed.returncode != 0:
@@ -295,7 +292,10 @@ def ensure_fallback_previews():
             return
         if destination.exists() and destination.stat().st_mtime >= source.stat().st_mtime:
             return
-        Image.open(source).convert("L").save(destination, format="PNG")
+        image = Image.open(source)
+        if image.mode not in ("L", "RGB", "RGBA"):
+            image = image.convert("RGB")
+        image.save(destination, format="PNG")
 
     pairs = [
         (
