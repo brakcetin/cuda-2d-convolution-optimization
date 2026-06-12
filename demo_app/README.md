@@ -140,6 +140,8 @@ convolution_benchmark.exe --demo-input input.pgm --demo-output output.pgm --demo
 
 Images larger than 2048 pixels on their longest side are resized for presentation stability.
 
+Committed real-image PGM inputs are prepared with aspect ratio preserved and longest side limited to 1024 pixels. They are not forced into a square, so portraits and building photos should not look horizontally or vertically squeezed.
+
 The first live CUDA subprocess can include CUDA context initialization cost in total GPU time. For presentation, emphasize kernel time and correctness first, then explain that total time includes setup and transfer overhead.
 
 ## Benchmark Interpretation

@@ -139,7 +139,7 @@ Two differences are worth noting. First, on the RTX 4070 the best total-speedup 
 
 ### 4.4 Qualitative real-image demo
 
-Beyond the synthetic matrix, the executable supports a dependency-free grayscale PGM path used for demonstration: Sobel-like edge detection on a building photo and a wood texture, Gaussian-like blur and sharpening on a portrait (1024x1024, filters and versions as in the committed demo scripts). These outputs are committed under `results/` and reproduce bit-identically on both GPUs. They are presentation material; all speedup claims come from the synthetic matrix.
+Beyond the synthetic matrix, the executable supports a dependency-free grayscale PGM path used for demonstration: Sobel-like edge detection on a building photo and a wood texture, Gaussian-like blur and sharpening on a portrait. The prepared PGM inputs preserve the original image aspect ratios while limiting the longest side to 1024 pixels, so the demo images are not visually distorted. These outputs are committed under `results/` and reproduce bit-identically on both GPUs. They are presentation material; all speedup claims come from the synthetic matrix.
 
 ## 5. Academic Background
 

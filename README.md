@@ -213,7 +213,8 @@ Use this pipeline after pulling the repository on any CUDA-capable machine.
 7. Generate plots from the current benchmark CSV:
 
    ```powershell
-   python .\scripts\plot_results.py --input results\timing_results.csv --output-dir results\plots
+   python .\scripts\plot_results.py --input results\timing_results.csv --compare-input results\timing_results_rtx4070.csv --output-dir results\plots
+   python .\scripts\plot_results.py --input results\timing_results_rtx4070.csv --compare-input results\timing_results.csv --output-dir results\plots_rtx4070
    ```
 
 8. Prepare real-image demo inputs:
@@ -227,6 +228,8 @@ Use this pipeline after pulling the repository on any CUDA-capable machine.
    ```text
    C:\Program Files\ImageMagick-7.1.2-Q16-HDRI\magick.exe
    ```
+
+   The conversion preserves aspect ratio and limits the longest side to 1024 pixels. It does not force images into a 1024x1024 square, because that visually distorts portraits and non-square photos.
 
 9. Run qualitative real-image demos:
 
@@ -243,7 +246,7 @@ Use this pipeline after pulling the repository on any CUDA-capable machine.
     Copy-Item results\timing_results_gtx1650_official.csv results\timing_results.csv
     Copy-Item results\correctness_results_gtx1650_official.csv results\correctness_results.csv
     Copy-Item results\summary_best_versions_gtx1650_official.csv results\summary_best_versions.csv
-    python .\scripts\plot_results.py --input results\timing_results.csv --output-dir results\plots
+    python .\scripts\plot_results.py --input results\timing_results.csv --compare-input results\timing_results_rtx4070.csv --output-dir results\plots
     ```
 
 11. Run the presentation dashboard and live image demo:

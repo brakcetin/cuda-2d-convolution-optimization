@@ -69,10 +69,12 @@ If ImageMagick is not found, it falls back to Python/Pillow.
 ImageMagick form:
 
 ```powershell
-magick "data\real_images\building.png" -colorspace Gray -resize 1024x1024! "data\real_images\building_1024.pgm"
-magick "data\real_images\portrait.jpg" -colorspace Gray -resize 1024x1024! "data\real_images\portrait_1024.pgm"
-magick "data\real_images\texture.png" -colorspace Gray -resize 1024x1024! "data\real_images\texture_1024.pgm"
+magick "data\real_images\building.png" -colorspace Gray -resize 1024x1024 "data\real_images\building_1024.pgm"
+magick "data\real_images\portrait.jpg" -colorspace Gray -resize 1024x1024 "data\real_images\portrait_1024.pgm"
+magick "data\real_images\texture.png" -colorspace Gray -resize 1024x1024 "data\real_images\texture_1024.pgm"
 ```
+
+The resize command intentionally does not use `!`. This preserves the original aspect ratio and limits the longest side to 1024 pixels instead of forcing every image into a distorted square.
 
 Project helper form:
 
@@ -100,9 +102,9 @@ Building Sobel:
 Result:
 
 ```text
-Image: 1024x1024
+Image: 1024x808
 Filter: sobel 3x3
-Kernel time ms: 0.250272
+Kernel time ms: 0.212896
 Max abs error: 0
 Mean abs error: 0
 Passed: true
@@ -117,11 +119,11 @@ Portrait Gaussian:
 Result:
 
 ```text
-Image: 1024x1024
+Image: 1024x683
 Filter: gaussian 11x11
-Kernel time ms: 0.407552
+Kernel time ms: 0.288352
 Max abs error: 3.57628e-07
-Mean abs error: 3.04456e-08
+Mean abs error: 3.00782e-08
 Passed: true
 ```
 
@@ -134,11 +136,11 @@ Portrait Sharpen:
 Result:
 
 ```text
-Image: 1024x1024
+Image: 1024x683
 Filter: sharpen 3x3
-Kernel time ms: 0.251232
-Max abs error: 5.36442e-07
-Mean abs error: 1.00909e-07
+Kernel time ms: 0.164608
+Max abs error: 5.96046e-07
+Mean abs error: 1.00679e-07
 Passed: true
 ```
 
@@ -151,9 +153,9 @@ Texture Sobel:
 Result:
 
 ```text
-Image: 1024x1024
+Image: 768x1024
 Filter: sobel 3x3
-Kernel time ms: 0.240672
+Kernel time ms: 0.210944
 Max abs error: 0
 Mean abs error: 0
 Passed: true

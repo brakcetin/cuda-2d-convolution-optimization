@@ -297,9 +297,9 @@ def ensure_fallback_previews():
     for name, original, output in pairs:
         original_png = FALLBACK_DIR / f"{name}_original.png"
         output_png = FALLBACK_DIR / f"{name}_output.png"
-        if original.exists() and not original_png.exists():
+        if original.exists():
             Image.open(original).convert("L").save(original_png, format="PNG")
-        if output.exists() and not output_png.exists():
+        if output.exists():
             Image.open(output).convert("L").save(output_png, format="PNG")
         if original_png.exists() and output_png.exists():
             items.append({

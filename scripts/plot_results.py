@@ -46,10 +46,27 @@ def default_filter_rows(rows: list[dict[str, str]]) -> list[dict[str, str]]:
     return rows
 
 
-def plot_speedup_by_version(rows: list[dict[str, str]], output_dir: Path) -> None:
+def y_max(values: list[float]) -> float | None:
+    if not values:
+        return None
+    maximum = max(values)
+    if maximum <= 0.0:
+        return None
+    return maximum * 1.08
+
+
+def apply_y_limit(plt, values: list[float]) -> None:
+    maximum = y_max(values)
+    if maximum is not None:
+        plt.ylim(bottom=0, top=maximum)
+
+
+def plot_speedup_by_version(rows: list[dict[str, str]], output_dir: Path, limit_rows: list[dict[str, str]]) -> None:
     plt = require_matplotlib()
     rows = default_filter_rows(rows)
+    limit_rows = default_filter_rows(limit_rows)
     grouped = group_by(rows, "version")
+    limit_values = [float(row["kernel_speedup"]) for row in limit_rows]
 
     plt.figure(figsize=(10, 6))
     for version, version_rows in sorted(grouped.items()):
@@ -62,16 +79,23 @@ def plot_speedup_by_version(rows: list[dict[str, str]], output_dir: Path) -> Non
     plt.ylabel("Kernel speedup vs CPU")
     plt.xlabel("Image width x filter size")
     plt.title("CUDA Kernel Speedup by Version")
+    apply_y_limit(plt, limit_values)
     plt.legend()
     plt.tight_layout()
     plt.savefig(output_dir / "speedup_by_version.png", dpi=160)
     plt.close()
 
 
-def plot_time_by_image_size(rows: list[dict[str, str]], output_dir: Path) -> None:
+def plot_time_by_image_size(rows: list[dict[str, str]], output_dir: Path, limit_rows: list[dict[str, str]]) -> None:
     plt = require_matplotlib()
     rows = default_filter_rows(rows)
+    limit_rows = default_filter_rows(limit_rows)
     grouped = group_by(rows, "version")
+    limit_values: list[float] = []
+    for row in limit_rows:
+        if row["filter_size"] == "3":
+            limit_values.append(float(row["gpu_kernel_time_ms"]))
+            limit_values.append(float(row["cpu_time_ms"]))
 
     plt.figure(figsize=(10, 6))
     cpu_by_size: dict[int, float] = {}
@@ -97,16 +121,23 @@ def plot_time_by_image_size(rows: list[dict[str, str]], output_dir: Path) -> Non
     plt.ylabel("Time (ms)")
     plt.xlabel("Image width, square image")
     plt.title("CPU vs CUDA Kernel Time for 3x3 Filter")
+    apply_y_limit(plt, limit_values)
     plt.legend()
     plt.tight_layout()
     plt.savefig(output_dir / "time_by_image_size_3x3.png", dpi=160)
     plt.close()
 
 
-def plot_speedup_by_filter_size(rows: list[dict[str, str]], output_dir: Path) -> None:
+def plot_speedup_by_filter_size(rows: list[dict[str, str]], output_dir: Path, limit_rows: list[dict[str, str]]) -> None:
     plt = require_matplotlib()
     rows = default_filter_rows(rows)
+    limit_rows = default_filter_rows(limit_rows)
     grouped = group_by(rows, "version")
+    limit_values = [
+        float(row["kernel_speedup"])
+        for row in limit_rows
+        if row["image_width"] == "1024"
+    ]
 
     plt.figure(figsize=(10, 6))
     for version, version_rows in sorted(grouped.items()):
@@ -123,16 +154,22 @@ def plot_speedup_by_filter_size(rows: list[dict[str, str]], output_dir: Path) ->
     plt.ylabel("Kernel speedup vs CPU")
     plt.xlabel("Filter size")
     plt.title("Speedup by Filter Size for 1024x1024 Image")
+    apply_y_limit(plt, limit_values)
     plt.legend()
     plt.tight_layout()
     plt.savefig(output_dir / "speedup_by_filter_size_1024.png", dpi=160)
     plt.close()
 
 
-def plot_kernel_vs_total(rows: list[dict[str, str]], output_dir: Path) -> None:
+def plot_kernel_vs_total(rows: list[dict[str, str]], output_dir: Path, limit_rows: list[dict[str, str]]) -> None:
     plt = require_matplotlib()
     rows = default_filter_rows(rows)
+    limit_rows = default_filter_rows(limit_rows)
     selected = [row for row in rows if row["filter_size"] == "3" and row["image_width"] == "1024"]
+    limit_selected = [row for row in limit_rows if row["filter_size"] == "3" and row["image_width"] == "1024"]
+    limit_values = []
+    for row in limit_selected:
+        limit_values.extend([float(row["gpu_kernel_time_ms"]), float(row["gpu_total_time_ms"])])
     selected = sorted(selected, key=lambda row: row["version"])
     if not selected:
         return
@@ -148,18 +185,24 @@ def plot_kernel_vs_total(rows: list[dict[str, str]], output_dir: Path) -> None:
     plt.xticks(list(positions), labels, rotation=30, ha="right")
     plt.ylabel("Time (ms)")
     plt.title("CUDA Kernel-only vs Total Time, 1024x1024 3x3")
+    apply_y_limit(plt, limit_values)
     plt.legend()
     plt.tight_layout()
     plt.savefig(output_dir / "kernel_vs_total_time.png", dpi=160)
     plt.close()
 
 
-def plot_speedup_by_filter_type(rows: list[dict[str, str]], output_dir: Path) -> None:
+def plot_speedup_by_filter_type(rows: list[dict[str, str]], output_dir: Path, limit_rows: list[dict[str, str]]) -> None:
     if not rows or "filter_type" not in rows[0]:
         return
     if "block_width" in rows[0] and "block_height" in rows[0]:
         rows = [
             row for row in rows
+            if row["block_width"] == "16" and row["block_height"] == "16"
+        ]
+    if limit_rows and "block_width" in limit_rows[0] and "block_height" in limit_rows[0]:
+        limit_rows = [
+            row for row in limit_rows
             if row["block_width"] == "16" and row["block_height"] == "16"
         ]
 
@@ -169,6 +212,12 @@ def plot_speedup_by_filter_type(rows: list[dict[str, str]], output_dir: Path) ->
         for row in rows
         if row["image_width"] == "1024" and row["filter_size"] == "7"
     ]
+    limit_selected = [
+        row
+        for row in limit_rows
+        if row["image_width"] == "1024" and row["filter_size"] == "7"
+    ]
+    limit_values = [float(row["kernel_speedup"]) for row in limit_selected]
     selected = sorted(selected, key=lambda row: (row["version"], row["filter_type"]))
     if not selected:
         return
@@ -185,13 +234,14 @@ def plot_speedup_by_filter_type(rows: list[dict[str, str]], output_dir: Path) ->
     plt.ylabel("Kernel speedup vs CPU")
     plt.xlabel("Filter type")
     plt.title("Speedup by Filter Type, 1024x1024 7x7")
+    apply_y_limit(plt, limit_values)
     plt.legend()
     plt.tight_layout()
     plt.savefig(output_dir / "speedup_by_filter_type_1024_7x7.png", dpi=160)
     plt.close()
 
 
-def plot_speedup_by_block_size(rows: list[dict[str, str]], output_dir: Path) -> None:
+def plot_speedup_by_block_size(rows: list[dict[str, str]], output_dir: Path, limit_rows: list[dict[str, str]]) -> None:
     if not rows or "block_width" not in rows[0] or "block_height" not in rows[0]:
         return
 
@@ -203,6 +253,14 @@ def plot_speedup_by_block_size(rows: list[dict[str, str]], output_dir: Path) -> 
         and row["image_width"] == "1024"
         and row["filter_size"] == "7"
     ]
+    limit_selected = [
+        row
+        for row in limit_rows
+        if row.get("filter_type", "box") == "box"
+        and row["image_width"] == "1024"
+        and row["filter_size"] == "7"
+    ]
+    limit_values = [float(row["kernel_speedup"]) for row in limit_selected]
     selected = sorted(
         selected,
         key=lambda row: (row["version"], int(row["block_width"]), int(row["block_height"])),
@@ -228,13 +286,14 @@ def plot_speedup_by_block_size(rows: list[dict[str, str]], output_dir: Path) -> 
     plt.ylabel("Kernel speedup vs CPU")
     plt.xlabel("CUDA block size")
     plt.title("Speedup by Block Size, 1024x1024 7x7 Box Filter")
+    apply_y_limit(plt, limit_values)
     plt.legend()
     plt.tight_layout()
     plt.savefig(output_dir / "speedup_by_block_size_1024_7x7_box.png", dpi=160)
     plt.close()
 
 
-def plot_direct_versions_sobel(rows: list[dict[str, str]], output_dir: Path) -> None:
+def plot_direct_versions_sobel(rows: list[dict[str, str]], output_dir: Path, limit_rows: list[dict[str, str]]) -> None:
     if not rows or "filter_type" not in rows[0]:
         return
 
@@ -254,6 +313,15 @@ def plot_direct_versions_sobel(rows: list[dict[str, str]], output_dir: Path) -> 
         and row["filter_type"] == "sobel"
         and row["version"] in direct_versions
     ]
+    limit_selected = [
+        row
+        for row in limit_rows
+        if row["image_width"] == "1024"
+        and row["filter_size"] == "7"
+        and row["filter_type"] == "sobel"
+        and row["version"] in direct_versions
+    ]
+    limit_values = [float(row["kernel_speedup"]) for row in limit_selected]
     if not selected:
         return
 
@@ -275,6 +343,7 @@ def plot_direct_versions_sobel(rows: list[dict[str, str]], output_dir: Path) -> 
     plt.ylabel("Kernel speedup vs CPU")
     plt.xlabel("CUDA block size")
     plt.title("Direct CUDA Versions, 1024x1024 7x7 Sobel")
+    apply_y_limit(plt, limit_values)
     plt.legend()
     plt.tight_layout()
     plt.savefig(output_dir / "direct_versions_speedup_1024_7x7_sobel.png", dpi=160)
@@ -284,21 +353,27 @@ def plot_direct_versions_sobel(rows: list[dict[str, str]], output_dir: Path) -> 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate benchmark plots.")
     parser.add_argument("--input", default="results/timing_results.csv", type=Path)
+    parser.add_argument("--compare-input", action="append", default=[], type=Path)
     parser.add_argument("--output-dir", default="results/plots", type=Path)
     args = parser.parse_args()
 
     rows = read_rows(args.input)
     if not rows:
         raise SystemExit(f"No benchmark rows found in {args.input}")
+    limit_rows = list(rows)
+    for compare_input in args.compare_input:
+        compare_rows = read_rows(compare_input)
+        if compare_rows:
+            limit_rows.extend(compare_rows)
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    plot_speedup_by_version(rows, args.output_dir)
-    plot_time_by_image_size(rows, args.output_dir)
-    plot_speedup_by_filter_size(rows, args.output_dir)
-    plot_kernel_vs_total(rows, args.output_dir)
-    plot_speedup_by_filter_type(rows, args.output_dir)
-    plot_speedup_by_block_size(rows, args.output_dir)
-    plot_direct_versions_sobel(rows, args.output_dir)
+    plot_speedup_by_version(rows, args.output_dir, limit_rows)
+    plot_time_by_image_size(rows, args.output_dir, limit_rows)
+    plot_speedup_by_filter_size(rows, args.output_dir, limit_rows)
+    plot_kernel_vs_total(rows, args.output_dir, limit_rows)
+    plot_speedup_by_filter_type(rows, args.output_dir, limit_rows)
+    plot_speedup_by_block_size(rows, args.output_dir, limit_rows)
+    plot_direct_versions_sobel(rows, args.output_dir, limit_rows)
     print(f"Plots written to {args.output_dir}")
 
 

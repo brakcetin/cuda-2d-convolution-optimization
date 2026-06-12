@@ -212,3 +212,38 @@ Dashboard plot update:
 - GTX 1650 and RTX 4070 plots are now paired side by side when the same plot exists for both GPUs.
 - The existing `gpu_comparison_kernel_time.png` is shown as a combined hardware-comparison plot.
 - Raw kernel time is the most meaningful hardware comparison. Speedup values depend on each machine's CPU baseline, so GTX-vs-RTX speedup should be interpreted carefully.
+
+## Aspect Ratio And Shared Plot Scale Update
+
+The real-image preparation workflow was fixed because the previous ImageMagick command forced every image into `1024x1024`, which squeezed non-square images. The new command preserves aspect ratio and limits only the longest side to 1024 pixels:
+
+```powershell
+magick "data\real_images\portrait.jpg" -colorspace Gray -resize 1024x1024 "data\real_images\portrait_1024.pgm"
+```
+
+Updated prepared dimensions:
+
+```text
+building_1024.pgm: 1024x808
+portrait_1024.pgm: 1024x683
+texture_1024.pgm: 768x1024
+```
+
+The committed demo outputs were regenerated from these aspect-ratio-preserving inputs:
+
+```text
+building_sobel.pgm: 1024x808
+portrait_gaussian.pgm: 1024x683
+portrait_sharpen.pgm: 1024x683
+texture_sobel.pgm: 768x1024
+```
+
+The benchmark plot generator was also updated with `--compare-input`. When GTX and RTX plots are generated as a pair, both images now use the same y-axis maximum computed from both CSV files. This makes side-by-side plot comparison fairer because the visual scale is no longer independently stretched per GPU.
+
+Regeneration commands:
+
+```powershell
+python .\scripts\plot_results.py --input results\timing_results.csv --compare-input results\timing_results_rtx4070.csv --output-dir results\plots
+python .\scripts\plot_results.py --input results\timing_results_rtx4070.csv --compare-input results\timing_results.csv --output-dir results\plots_rtx4070
+python .\scripts\plot_real_image_panel.py --output results\plots\real_image_demo_panel.png
+```

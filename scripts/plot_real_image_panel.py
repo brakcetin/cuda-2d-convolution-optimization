@@ -28,7 +28,7 @@ def main():
         ax.imshow(np.asarray(Image.open(path)), cmap="gray")
         ax.set_title(title, fontsize=9)
         ax.axis("off")
-    fig.suptitle("Qualitative real-image demo (PGM path), 1024x1024 grayscale")
+    fig.suptitle("Qualitative real-image demo (PGM path), grayscale with aspect ratio preserved")
     fig.tight_layout()
     fig.savefig(args.output, dpi=150)
     print(f"Plot written to {args.output}")

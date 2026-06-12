@@ -45,7 +45,7 @@ if ($Magick) {
     foreach ($Image in $Images) {
         $InputPath = Join-Path $InputDir $Image.Input
         $OutputPath = Join-Path $InputDir $Image.Output
-        & $Magick "$InputPath" -colorspace Gray -resize "${Size}x${Size}!" "$OutputPath"
+        & $Magick "$InputPath" -colorspace Gray -resize "${Size}x${Size}" "$OutputPath"
         Write-Host "$InputPath -> $OutputPath"
     }
     exit 0
@@ -68,9 +68,10 @@ conversions = [
 for src_name, dst_name in conversions:
     src = root / src_name
     dst = root / dst_name
-    image = Image.open(src).convert("L").resize((size, size), Image.Resampling.LANCZOS)
+    image = Image.open(src).convert("L")
+    image.thumbnail((size, size), Image.Resampling.LANCZOS)
     image.save(dst)
-    print(f"{src} -> {dst} ({size}x{size})")
+    print(f"{src} -> {dst} ({image.width}x{image.height}, aspect ratio preserved)")
 "@
 
 $PythonScript | python -
