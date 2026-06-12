@@ -131,3 +131,4 @@ Official performance claims should still come from the committed synthetic bench
 - **Separable error:** choose `box` or `gaussian` when using `cuda_separable`.
 - **Virtual environment has no pip:** return to the repository root and run `python -m pip install -r demo_app\requirements.txt`.
 - **Port 5000 is busy:** run `scripts/run_demo_dashboard.ps1 -Port 5001`.
+- **Chrome shows `ERR_NO_BUFFER_SPACE` for `app.js`:** stop the Flask server with `Ctrl+C`, close extra browser tabs, restart on another port with `scripts/run_demo_dashboard.ps1 -Port 5001`, and open `http://127.0.0.1:5001`. If needed, use Edge or an incognito Chrome window.

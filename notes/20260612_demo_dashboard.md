@@ -132,3 +132,29 @@ Troubleshooting notes:
 - If the CUDA executable is missing, rerun the configure and build scripts.
 - If a virtual environment is created but `pip` is unavailable, use the system Python command from the repository root.
 - `cuda_separable` is only valid for `box` and `gaussian` filters.
+
+## Browser Error Follow-Up
+
+During a local run, Chrome reported:
+
+```text
+app.js:1 Failed to load resource: net::ERR_NO_BUFFER_SPACE
+favicon.ico 404
+```
+
+The Flask log still showed successful `200` responses for `/`, `/styles.css`, `/app.js`, `/api/summary`, `/api/plots`, and `/api/sample-demo`, so the dashboard server itself was working. The `favicon.ico` request was harmless but noisy, so a `/favicon.ico` route was added to return HTTP `204` instead of `404`.
+
+If `ERR_NO_BUFFER_SPACE` appears again, use this recovery sequence:
+
+```powershell
+Ctrl+C
+.\scripts\run_demo_dashboard.ps1 -Port 5001
+```
+
+Then open:
+
+```text
+http://127.0.0.1:5001
+```
+
+If Chrome still shows the same network-buffer error, close extra Chrome tabs or use Edge/incognito mode. This error is normally browser/Windows local networking state, not a CUDA or Flask application failure.

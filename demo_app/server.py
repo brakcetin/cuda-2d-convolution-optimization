@@ -7,7 +7,7 @@ from pathlib import Path
 from uuid import uuid4
 
 try:
-    from flask import Flask, jsonify, request, send_file, send_from_directory
+    from flask import Flask, Response, jsonify, request, send_file, send_from_directory
 except ImportError as error:
     raise SystemExit(
         "Flask is not installed. Run: python -m pip install -r demo_app/requirements.txt"
@@ -286,6 +286,11 @@ def ensure_fallback_previews():
 @app.route("/")
 def index():
     return send_from_directory(app.static_folder, "index.html")
+
+
+@app.route("/favicon.ico")
+def favicon():
+    return Response(status=204)
 
 
 @app.route("/api/summary")

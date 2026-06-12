@@ -367,6 +367,7 @@ Troubleshooting:
 - If port `5000` is busy, run `.\scripts\run_demo_dashboard.ps1 -Port 5001` and open `http://127.0.0.1:5001`.
 - If `cuda_separable` gives a validation error, choose `box` or `gaussian`; separable convolution is not valid for `sobel` or `sharpen` in this project.
 - If a virtual environment is created but `pip` is unavailable, use the non-venv command from the repository root: `python -m pip install -r demo_app\requirements.txt`.
+- If Chrome reports `ERR_NO_BUFFER_SPACE` for `app.js`, the Flask server is usually still working. Stop the server with `Ctrl+C`, close extra browser tabs, restart the dashboard on another port with `.\scripts\run_demo_dashboard.ps1 -Port 5001`, and open `http://127.0.0.1:5001`. Edge or an incognito Chrome window is also a good fallback.
 
 Generate plots after benchmark CSV files are populated:
 
