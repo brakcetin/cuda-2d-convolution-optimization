@@ -182,3 +182,33 @@ data\real_images\building.png
 data\real_images\portrait.jpg
 data\real_images\texture.png
 ```
+
+## Control Compatibility And Explanation Update
+
+The Live Demo UI was updated so incompatible choices do not appear to the user:
+
+- `cuda_separable` is hidden and disabled when the selected filter is `sobel` or `sharpen`.
+- `cuda_separable` remains available for `box` and `gaussian`.
+
+This matches the implementation and the project methodology: separable convolution is only used when the filter is intentionally separable. Sobel and sharpen are benchmarked as direct 2D convolution filters.
+
+New UI explanation panels were added:
+
+- filter meaning
+- filter-size meaning
+- CUDA version meaning
+- block-size meaning
+- CPU time vs kernel time vs total GPU time
+
+Important metric interpretation:
+
+- `CPU time` is a single-threaded CPU reference.
+- `Kernel time` is only CUDA computation after data is already on the GPU.
+- `Total GPU time` includes allocation, host-to-device copy, kernel, device-to-host copy, and free time.
+- For small images such as `256x256`, CPU time can be lower than total GPU time because GPU overhead is larger than the actual computation. This does not mean the GPU kernel is slow; the kernel time can still be much faster.
+
+Dashboard plot update:
+
+- GTX 1650 and RTX 4070 plots are now paired side by side when the same plot exists for both GPUs.
+- The existing `gpu_comparison_kernel_time.png` is shown as a combined hardware-comparison plot.
+- Raw kernel time is the most meaningful hardware comparison. Speedup values depend on each machine's CPU baseline, so GTX-vs-RTX speedup should be interpreted carefully.

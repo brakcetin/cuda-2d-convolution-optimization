@@ -19,6 +19,36 @@ const labelVersion = (version) => ({
   cuda_separable: "Separable",
 }[version] || version || "n/a");
 
+const filterDescriptions = {
+  sobel: "Sobel edge: highlights intensity changes and edges. Output can look gray or relief-like instead of photo-like.",
+  gaussian: "Gaussian blur: smooths the image. Larger filters blur more strongly and do more work.",
+  sharpen: "Sharpen: increases local contrast around edges. It can make details stronger but may amplify noise.",
+  box: "Box blur: averages neighboring pixels. It is simple, separable, and useful as a baseline blur.",
+};
+
+const filterSizeDescriptions = {
+  "3": "Small neighborhood. Less blur/edge context, less arithmetic, usually faster.",
+  "5": "Moderate neighborhood. More visible smoothing or edge context than 3x3.",
+  "7": "Larger neighborhood. More arithmetic and stronger effect for blur filters.",
+  "11": "Large neighborhood. Stronger blur/context and heavier workload; good for showing speedup.",
+};
+
+const cudaVersionDescriptions = {
+  cuda_naive_global_memory: "Naive: one CUDA thread computes one pixel using global memory. Simple baseline.",
+  cuda_shared_memory_tiled: "Shared memory: loads an input tile plus halo into shared memory to reuse nearby pixels.",
+  cuda_shared_constant_filter: "Shared + constant: shared-memory input reuse plus constant-memory filter coefficients. Strong direct-convolution choice.",
+  cuda_separable: "Separable: two 1D passes instead of one 2D filter. Only valid for box and Gaussian filters.",
+};
+
+const blockSizeDescriptions = {
+  "8x8": "Small block. Often stable but may expose less parallel work per block.",
+  "16x16": "Balanced default. Good general presentation choice.",
+  "32x8": "Wide block. Often good for row-major image access and separable/direct cases.",
+  "32x16": "Large wide block. Can be strong for some direct kernels but is workload-dependent.",
+};
+
+const separableFilters = new Set(["box", "gaussian"]);
+
 const card = (label, value, detail = "") => `
   <article class="card">
     <div class="label">${label}</div>
@@ -117,13 +147,48 @@ function renderSummary(summary) {
 }
 
 function renderPlots(plots) {
-  document.getElementById("plotGrid").innerHTML = plots.map((plot) => `
-    <article class="plot-card">
+  const combined = plots.combined || [];
+  const paired = plots.paired || plots || [];
+  const combinedHtml = combined.map((plot) => `
+    <article class="plot-card plot-card-wide">
       <h3>${plot.title}</h3>
-      <p>${plot.gpu}</p>
+      <p>GTX 1650 and RTX 4070 in the same figure</p>
       <img src="${plot.url}" alt="${plot.title}" loading="lazy" />
     </article>
   `).join("");
+
+  const pairedHtml = paired.map((pair) => {
+    if (pair.url) {
+      return `
+        <article class="plot-card">
+          <h3>${pair.title}</h3>
+          <p>${pair.gpu}</p>
+          <img src="${pair.url}" alt="${pair.title}" loading="lazy" />
+        </article>
+      `;
+    }
+    return `
+      <article class="plot-pair">
+        <h3>${pair.title}</h3>
+        <div class="paired-images">
+          ${pair.gtx ? `
+            <div class="plot-card compact">
+              <p>GTX 1650</p>
+              <img src="${pair.gtx.url}" alt="${pair.title} GTX 1650" loading="lazy" />
+            </div>
+          ` : ""}
+          ${pair.rtx ? `
+            <div class="plot-card compact">
+              <p>RTX 4070</p>
+              <img src="${pair.rtx.url}" alt="${pair.title} RTX 4070" loading="lazy" />
+            </div>
+          ` : ""}
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  document.getElementById("plotGrid").innerHTML = combinedHtml + pairedHtml;
 }
 
 function renderSamples(samples) {
@@ -208,10 +273,50 @@ function setupLiveForm() {
   const fileName = document.getElementById("fileName");
   const form = document.getElementById("demoForm");
   const message = document.getElementById("liveMessage");
+  const filterType = document.getElementById("filterType");
+  const filterSize = document.getElementById("filterSize");
+  const cudaVersion = document.getElementById("cudaVersion");
+  const blockSize = document.getElementById("blockSize");
+
+  function updateSelectionGuide() {
+    const filter = filterType.value;
+    const version = cudaVersion.value;
+    const size = filterSize.value;
+    const block = blockSize.value;
+
+    Array.from(cudaVersion.options).forEach((option) => {
+      const incompatible = option.value === "cuda_separable" && !separableFilters.has(filter);
+      option.hidden = incompatible;
+      option.disabled = incompatible;
+      option.style.display = incompatible ? "none" : "";
+    });
+    if (cudaVersion.selectedOptions[0]?.hidden) {
+      cudaVersion.value = "cuda_shared_constant_filter";
+    }
+
+    document.getElementById("filterHelp").textContent = filterDescriptions[filter];
+    document.getElementById("filterSizeHelp").textContent = filterSizeDescriptions[size];
+    document.getElementById("cudaVersionHelp").textContent = cudaVersionDescriptions[cudaVersion.value];
+    document.getElementById("blockSizeHelp").textContent = blockSizeDescriptions[block];
+    document.getElementById("selectionGuide").innerHTML = `
+      <strong>Selected meaning:</strong>
+      ${filterDescriptions[filter]}
+      Filter size ${size}x${size}: ${filterSizeDescriptions[size]}
+      CUDA version: ${cudaVersionDescriptions[cudaVersion.value]}
+      Block ${block}: ${blockSizeDescriptions[block]}
+      ${version === "cuda_separable" && !separableFilters.has(filter)
+        ? "Separable convolution was hidden because it is only mathematically valid for box and Gaussian filters in this demo."
+        : ""}
+    `;
+  }
 
   imageInput.addEventListener("change", () => {
     fileName.textContent = imageInput.files[0]?.name || "No file selected";
   });
+  [filterType, filterSize, cudaVersion, blockSize].forEach((element) => {
+    element.addEventListener("change", updateSelectionGuide);
+  });
+  updateSelectionGuide();
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();

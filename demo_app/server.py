@@ -147,18 +147,34 @@ def direct_comparison(label, timing_path):
 
 
 def plot_entries():
-    entries = []
+    grouped = {}
+    combined = []
     for label, folder in (("GTX 1650", "plots"), ("RTX 4070", "plots_rtx4070")):
         path = repo_path("results", folder)
         if not path.exists():
             continue
         for image in sorted(path.glob("*.png")):
-            entries.append({
+            entry = {
+                "filename": image.name,
                 "gpu": label,
                 "title": image.stem.replace("_", " ").title(),
                 "url": f"/repo/results/{folder}/{image.name}",
+            }
+            if image.name.startswith("gpu_comparison_"):
+                combined.append(entry)
+                continue
+            grouped.setdefault(image.name, {
+                "filename": image.name,
+                "title": image.stem.replace("_", " ").title(),
+                "gtx": None,
+                "rtx": None,
             })
-    return entries
+            key = "gtx" if label.startswith("GTX") else "rtx"
+            grouped[image.name][key] = entry
+    return {
+        "combined": combined,
+        "paired": [value for _, value in sorted(grouped.items())],
+    }
 
 
 def save_pgm_l(image, path):

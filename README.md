@@ -356,6 +356,22 @@ Use these steps when you want to show the project during the presentation. Run a
 
    The visual output is the filtered convolution result, not a copy of the input. Correctness is judged by comparing the CUDA result with the CPU reference using max/mean absolute error.
 
+   The Live Demo UI hides incompatible combinations. `cuda_separable` is shown only for `box` and `gaussian`, because Sobel and sharpen are direct 2D filters in this project.
+
+   Control meanings:
+
+   - `Filter`: box/Gaussian blur smooth the image, Sobel extracts edges, sharpen increases local contrast.
+   - `Filter size`: larger values such as `11x11` inspect more neighboring pixels, increase arithmetic work, and create stronger blur/context effects; smaller values such as `3x3` are lighter and faster.
+   - `CUDA version`: chooses the implementation strategy: naive global memory, shared-memory tiling, shared + constant filter memory, or separable two-pass convolution.
+   - `Block size`: chooses CUDA thread-block shape. `16x16` is a safe default, while `32x8` or `32x16` can be better for some workloads. The best block shape is workload-dependent.
+
+   Metric meanings:
+
+   - `CPU time`: single-threaded CPU reference time.
+   - `Kernel time`: CUDA compute time only.
+   - `Total GPU time`: allocation, host-to-device copy, kernel, device-to-host copy, and free time.
+   - For small images, CPU time can be lower than total GPU time because GPU setup and memory-transfer overhead dominate. Kernel time is usually the clearest view of raw GPU compute speed.
+
 10. Stop the dashboard after the presentation:
 
     ```text

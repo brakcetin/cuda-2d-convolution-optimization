@@ -114,6 +114,22 @@ Expected visual meaning:
 
 The output image is not expected to be identical to the input image. Correctness is judged numerically against the CPU reference using max/mean absolute error; the visual output shows what the selected filter does.
 
+The UI hides incompatible CUDA choices. In this project, `cuda_separable` is only shown for `box` and `gaussian` because Sobel and sharpen are treated as direct 2D filters.
+
+Control meanings:
+
+- **Filter:** selects the convolution kernel. Box and Gaussian blur smooth the image, Sobel extracts edges, and sharpen increases local contrast.
+- **Filter size:** selects the neighborhood width and height. Small filters such as `3x3` do less work and have a weaker spatial effect; larger filters such as `11x11` inspect more neighboring pixels, increase arithmetic work, and make blur/context effects stronger.
+- **CUDA version:** selects the kernel implementation. Naive is the basic global-memory kernel, shared memory reuses input tiles, shared + constant also caches filter coefficients, and separable uses two cheaper 1D passes when mathematically valid.
+- **Block size:** selects CUDA thread-block shape. There is no universal winner; `16x16` is the safe default, `32x8` is often good for row-major access, and `32x16` can help some direct kernels but depends on occupancy, memory access, and workload.
+
+Metric meanings:
+
+- **CPU time:** single-threaded CPU reference time.
+- **Kernel time:** CUDA computation time only.
+- **Total GPU time:** allocation, host-to-device copy, kernel, device-to-host copy, and free time.
+- **Speedup:** CPU time divided by CUDA time. Kernel speedup can be high while total GPU time is worse for small images because GPU setup and transfer overhead dominate.
+
 The live demo runs the executable like this:
 
 ```powershell
