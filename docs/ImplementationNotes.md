@@ -188,3 +188,13 @@ The selected profiling cases are intentionally small in count:
 Interpretation: the profiler evidence should explain the benchmark trends, especially algorithmic reduction for separable convolution, shared/constant memory behavior for direct convolution, and block-shape sensitivity for direct kernels.
 
 On the current Windows setup, Nsight Compute can launch and attach to the benchmark executable, but detailed counter collection is blocked by NVIDIA's `ERR_NVGPUCTRPERM` permission setting. The script and selected cases are committed so the profiling workflow can be rerun immediately after enabling GPU performance-counter access.
+
+## Presentation Demo Dashboard
+
+The repository includes a local Flask dashboard under `demo_app/`. It is intentionally separate from the official benchmark pipeline.
+
+Dashboard mode reads committed GTX 1650 and RTX 4070 CSV files and plots. This makes it safe for presentation even if CUDA is unavailable during the live demo.
+
+Live image demo mode accepts PNG, JPG, JPEG, or PGM images, converts the upload to grayscale PGM with Pillow, runs `convolution_benchmark.exe` in demo mode, converts the output PGM to PNG, and displays timing/correctness metrics. The C++ demo output was extended to include CPU time, GPU kernel time, total GPU time, kernel speedup, total speedup, and block size so the backend can parse real executable output instead of inventing metrics.
+
+Methodological note: uploaded image content affects the visual output, but benchmark timing is mostly determined by image dimensions, filter size, CUDA version, block size, GPU model, and transfer overhead. Official speedup claims still come from the committed synthetic benchmark matrix.

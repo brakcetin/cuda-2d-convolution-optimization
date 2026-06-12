@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>CUDA Convolution Demo Dashboard</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="eyebrow">CENG-479 Parallel Programming</p>
+        <h1>CUDA 2D Convolution Performance Study</h1>
+        <p class="subtitle">
+          Benchmark dashboard and live real-image convolution demo for CPU vs CUDA implementations.
+        </p>
+      </div>
+      <div class="status-pills" id="statusPills">
+        <span class="pill muted">Loading benchmark status...</span>
+      </div>
+    </header>
+
+    <main>
+      <nav class="tabs" aria-label="Demo modes">
+        <button class="tab active" data-mode="dashboard">Dashboard Mode</button>
+        <button class="tab" data-mode="live">Live Image Demo Mode</button>
+      </nav>
+
+      <section id="dashboardMode" class="mode active">
+        <section class="grid cards" id="summaryCards"></section>
+
+        <section class="panel explanation">
+          <h2>What The Scores Mean</h2>
+          <p id="methodNote">
+            Uploaded image dimensions determine most of the convolution workload. Timing depends mainly on
+            image size, filter size, CUDA version, block size, GPU model, and CPU/GPU transfer overhead;
+            not on the semantic content of the image.
+          </p>
+          <div class="explain-grid">
+            <div>
+              <h3>Kernel-only time</h3>
+              <p>Measures CUDA computation after data is available on the GPU.</p>
+            </div>
+            <div>
+              <h3>Total GPU time</h3>
+              <p>Includes allocation, host-to-device copy, kernel, copy-back, and free time.</p>
+            </div>
+            <div>
+              <h3>Memory hierarchy</h3>
+              <p>Shared memory reuses input tiles; constant memory improves repeated filter reads.</p>
+            </div>
+            <div>
+              <h3>Separable convolution</h3>
+              <p>For box and Gaussian filters, two 1D passes reduce arithmetic work dramatically.</p>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Direct Kernel Comparison</h2>
+              <p>GTX 1650, 4096x4096, 11x11 Sobel-like, 32x16 block.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Version</th>
+                  <th>CPU ms</th>
+                  <th>Kernel ms</th>
+                  <th>Total ms</th>
+                  <th>Kernel speedup</th>
+                  <th>Passed</th>
+                </tr>
+              </thead>
+              <tbody id="versionTable"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Benchmark Plots</h2>
+              <p>Committed GTX and RTX plots are shown directly from the repository.</p>
+            </div>
+          </div>
+          <div class="plot-grid" id="plotGrid"></div>
+        </section>
+      </section>
+
+      <section id="liveMode" class="mode">
+        <section class="panel live-panel">
+          <div class="section-head">
+            <div>
+              <h2>Run CUDA On An Uploaded Image</h2>
+              <p>
+                The backend converts the uploaded image to grayscale PGM, runs the CUDA executable, and
+                displays the filtered output with timing and correctness metrics.
+              </p>
+            </div>
+          </div>
+
+          <form id="demoForm" class="demo-form">
+            <label class="upload-box">
+              <span class="upload-title">Choose PNG, JPG, JPEG, or PGM</span>
+              <span id="fileName" class="upload-name">No file selected</span>
+              <input id="imageInput" name="image" type="file" accept=".png,.jpg,.jpeg,.pgm,image/png,image/jpeg" />
+            </label>
+
+            <div class="control-grid">
+              <label>
+                Filter
+                <select name="filter_type" id="filterType">
+                  <option value="sobel">Sobel edge</option>
+                  <option value="gaussian">Gaussian blur</option>
+                  <option value="sharpen">Sharpen</option>
+                  <option value="box">Box blur</option>
+                </select>
+              </label>
+              <label>
+                Filter size
+                <select name="filter_size">
+                  <option value="3">3x3</option>
+                  <option value="5">5x5</option>
+                  <option value="7">7x7</option>
+                  <option value="11">11x11</option>
+                </select>
+              </label>
+              <label>
+                CUDA version
+                <select name="version" id="cudaVersion">
+                  <option value="cuda_shared_constant_filter">Shared + constant filter</option>
+                  <option value="cuda_shared_memory_tiled">Shared memory tiled</option>
+                  <option value="cuda_naive_global_memory">Naive global memory</option>
+                  <option value="cuda_separable">Separable convolution</option>
+                </select>
+              </label>
+              <label>
+                Block size
+                <select name="block_size">
+                  <option value="16x16">16x16</option>
+                  <option value="8x8">8x8</option>
+                  <option value="32x8">32x8</option>
+                  <option value="32x16">32x16</option>
+                </select>
+              </label>
+            </div>
+
+            <button class="run-button" type="submit">Run CUDA Demo</button>
+          </form>
+
+          <div class="message" id="liveMessage">
+            Ready. Upload an image and run a CUDA convolution demo.
+          </div>
+        </section>
+
+        <section class="grid cards" id="liveMetrics"></section>
+
+        <section class="image-compare" id="imageCompare">
+          <div class="image-frame">
+            <h3>Original</h3>
+            <div class="empty-image">Upload an image to start.</div>
+          </div>
+          <div class="image-frame">
+            <h3>Filtered Output</h3>
+            <div class="empty-image">CUDA output appears here.</div>
+          </div>
+        </section>
+
+        <section class="panel command-panel">
+          <h2>CUDA Command</h2>
+          <pre id="commandBox">No command has run yet.</pre>
+          <details>
+            <summary>Raw executable output</summary>
+            <pre id="stdoutBox">No output yet.</pre>
+          </details>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <h2>Fallback Real-Image Demo Outputs</h2>
+              <p>These committed outputs keep the presentation safe if the live executable is unavailable.</p>
+            </div>
+          </div>
+          <div class="sample-grid" id="sampleGrid"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -62,6 +62,7 @@ cuda-2d-convolution-optimization/
 |   |-- prepare_real_images.ps1
 |   |-- run_pgm_demo.ps1
 |   |-- run_profiling.ps1
+|   |-- run_demo_dashboard.ps1
 |   `-- tool_paths.ps1
 |-- data/
 |   |-- sample_input.pgm
@@ -82,6 +83,11 @@ cuda-2d-convolution-optimization/
 |   |-- texture_sobel.pgm
 |   |-- profiling/
 |   `-- plots/
+|-- demo_app/
+|   |-- server.py
+|   |-- README.md
+|   |-- requirements.txt
+|   `-- static/
 |-- docs/
 |   |-- FinalReport.md
 |   |-- BenchmarkTables.md
@@ -239,6 +245,27 @@ Use this pipeline after pulling the repository on any CUDA-capable machine.
     Copy-Item results\summary_best_versions_gtx1650_official.csv results\summary_best_versions.csv
     python .\scripts\plot_results.py --input results\timing_results.csv --output-dir results\plots
     ```
+
+11. Run the presentation dashboard and live image demo:
+
+   ```powershell
+   .\scripts\configure_release.ps1
+   .\scripts\build_release.ps1
+   python -m pip install -r demo_app\requirements.txt
+   .\scripts\run_demo_dashboard.ps1
+   ```
+
+   Manual form:
+
+   ```powershell
+   cd demo_app
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   pip install -r requirements.txt
+   python server.py
+   ```
+
+   Open `http://127.0.0.1:5000`.
 
 Generate plots after benchmark CSV files are populated:
 
@@ -418,7 +445,17 @@ This repository satisfies the original proposal and Submission 2 requirements:
 
 ## UI Decision
 
-No UI is required for this course project. The official deliverables are source code, GitHub link, implementation report, benchmark tables/graphs, and a 10-minute presentation. The project intentionally focuses on CUDA implementation quality, correctness verification, reproducible benchmarking, and result interpretation instead of building a graphical interface.
+No UI is required for this course project, but a local demo dashboard is now included for presentation readiness. The dashboard does not replace the official benchmark methodology; it visualizes committed CSV/plot results and can optionally run the CUDA executable on an uploaded real image.
+
+Demo app:
+
+- `demo_app/server.py`
+- `demo_app/static/index.html`
+- `demo_app/static/styles.css`
+- `demo_app/static/app.js`
+- `demo_app/README.md`
+
+The demo has two modes: a safe dashboard mode using committed GTX/RTX results, and a live image mode that converts uploaded images to grayscale PGM and runs the CUDA executable.
 
 ## Nsight Compute Profiling
 
@@ -468,6 +505,7 @@ Completed:
 - Separable CUDA implementation for separable box and Gaussian-like filters.
 - Plot generation script for benchmark graphs.
 - Nsight Compute profiling helper for representative kernels.
+- Local Flask demo dashboard with live image upload mode.
 - Block-size speedup plot for the 1024x1024, 7x7, box-filter case.
 - Direct-version speedup plot for the 1024x1024, 7x7, Sobel-like case.
 - CSV result generation.

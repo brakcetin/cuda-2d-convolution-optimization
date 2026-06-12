@@ -203,6 +203,30 @@ Use this if a short live demo is requested:
 python .\scripts\plot_results.py --input results\timing_results.csv --output-dir results\plots
 ```
 
+Preferred dashboard demo:
+
+```powershell
+.\scripts\build_release.ps1
+cd demo_app
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r requirements.txt
+python server.py
+```
+
+Open `http://127.0.0.1:5000`.
+
+Dashboard sequence:
+
+1. Show GTX and RTX correctness badges.
+2. Show best speedup cards.
+3. Open benchmark plot gallery.
+4. Switch to Live Image Demo Mode.
+5. Upload `data\real_images\building.png`.
+6. Select Sobel, 3x3, `cuda_shared_constant_filter`, 16x16.
+7. Run the demo and show original/output images plus timing cards.
+8. Explain that image content changes the visual result, while timing mostly follows image dimensions and convolution parameters.
+
 Optional real-image PGM demo:
 
 ```powershell

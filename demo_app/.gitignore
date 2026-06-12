@@ -1,0 +1,9 @@
+uploads/*
+outputs/*
+sample_results/fallback_images/*.png
+.venv/
+__pycache__/
+*.pyc
+!uploads/.gitkeep
+!outputs/.gitkeep
+!sample_results/fallback_images/.gitkeep

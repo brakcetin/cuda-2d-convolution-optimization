@@ -12,6 +12,8 @@ out/
 *.log
 *.tmp
 *.csv.tmp
+__pycache__/
+*.pyc
 results/profiling/*.ncu-rep
 results/demo_output.pgm
 cmake-build-*/

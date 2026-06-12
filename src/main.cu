@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -197,6 +198,7 @@ void run_demo(const DemoOptions& options) {
 
     std::vector<float> cpu_output;
     if (version == "cpu" || version == "cpu_sequential") {
+        const auto cpu_start = std::chrono::high_resolution_clock::now();
         if (filter.separable && filter.type != "sharpen" && filter.type != "sobel") {
             convolution_cpu_separable(image.pixels,
                                       cpu_output,
@@ -212,24 +214,46 @@ void run_demo(const DemoOptions& options) {
                             filter.filter_2d,
                             options.filter_size);
         }
+        const auto cpu_stop = std::chrono::high_resolution_clock::now();
+        const double cpu_time_ms =
+            std::chrono::duration<double, std::milli>(cpu_stop - cpu_start).count();
         write_pgm_image(options.output_path,
                         cpu_output,
                         image.width,
                         image.height,
                         options.normalize_output);
-        std::cout << "CPU demo output written to " << options.output_path << '\n';
+        std::cout << "Demo output written to " << options.output_path << '\n'
+                  << "Version: " << options.version << '\n'
+                  << "Image: " << image.width << "x" << image.height << '\n'
+                  << "Filter: " << filter.type << " " << options.filter_size << "x"
+                  << options.filter_size << '\n'
+                  << "Block size: " << options.block_size.width << "x"
+                  << options.block_size.height << '\n'
+                  << "CPU time ms: " << cpu_time_ms << '\n'
+                  << "GPU kernel time ms: 0\n"
+                  << "GPU total time ms: 0\n"
+                  << "Kernel speedup: 0\n"
+                  << "Total speedup: 0\n"
+                  << "Max abs error: 0\n"
+                  << "Mean abs error: 0\n"
+                  << "Passed: true\n";
         return;
     }
 
     std::vector<float> reference;
     std::vector<float> gpu_output;
     CudaTiming timing;
+    double cpu_time_ms = 0.0;
+    const auto cpu_start = std::chrono::high_resolution_clock::now();
     convolution_cpu(image.pixels,
                     reference,
                     image.width,
                     image.height,
                     filter.filter_2d,
                     options.filter_size);
+    const auto cpu_stop = std::chrono::high_resolution_clock::now();
+    cpu_time_ms =
+        std::chrono::duration<double, std::milli>(cpu_stop - cpu_start).count();
 
     if (version == "naive" || version == "cuda_naive_global_memory") {
         convolution_cuda_naive(image.pixels, gpu_output, image.width, image.height,
@@ -255,12 +279,16 @@ void run_demo(const DemoOptions& options) {
         if (!filter.separable) {
             throw std::invalid_argument("Demo version cuda_separable requires a separable filter type.");
         }
+        const auto separable_cpu_start = std::chrono::high_resolution_clock::now();
         convolution_cpu_separable(image.pixels,
                                   reference,
                                   image.width,
                                   image.height,
                                   filter.filter_1d,
                                   options.filter_size);
+        const auto separable_cpu_stop = std::chrono::high_resolution_clock::now();
+        cpu_time_ms = std::chrono::duration<double, std::milli>(
+            separable_cpu_stop - separable_cpu_start).count();
         convolution_cuda_separable(image.pixels, gpu_output, image.width, image.height,
                                    filter.filter_1d, options.filter_size,
                                    options.block_size.width, options.block_size.height, 1, 1, timing);
@@ -281,7 +309,21 @@ void run_demo(const DemoOptions& options) {
               << "Image: " << image.width << "x" << image.height << '\n'
               << "Filter: " << filter.type << " " << options.filter_size << "x"
               << options.filter_size << '\n'
-              << "Kernel time ms: " << timing.kernel_time_ms << '\n'
+              << "Block size: " << options.block_size.width << "x"
+              << options.block_size.height << '\n'
+              << "CPU time ms: " << cpu_time_ms << '\n'
+              << "GPU kernel time ms: " << timing.kernel_time_ms << '\n'
+              << "GPU total time ms: " << timing.total_time_ms << '\n'
+              << "Kernel speedup: "
+              << (timing.kernel_time_ms > 0.0 ? cpu_time_ms / timing.kernel_time_ms : 0.0)
+              << '\n'
+              << "Total speedup: "
+              << (timing.total_time_ms > 0.0 ? cpu_time_ms / timing.total_time_ms : 0.0)
+              << '\n'
+              << "GPU allocation time ms: " << timing.allocation_time_ms << '\n'
+              << "GPU host-to-device time ms: " << timing.host_to_device_time_ms << '\n'
+              << "GPU device-to-host time ms: " << timing.device_to_host_time_ms << '\n'
+              << "GPU free time ms: " << timing.free_time_ms << '\n'
               << "Max abs error: " << metrics.max_abs_error << '\n'
               << "Mean abs error: " << metrics.mean_abs_error << '\n'
               << "Passed: " << (metrics.passed ? "true" : "false") << '\n';

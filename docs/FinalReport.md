@@ -17,6 +17,8 @@ The repository also includes a qualitative real-image demo path using grayscale 
 
 Real-image conversion was performed with ImageMagick 7.1.2-23 Q16-HDRI on Windows. The project keeps this conversion step outside the official benchmark so image-decoding overhead does not affect the CUDA timing analysis.
 
+For presentation, the repository also includes a local dashboard application. Dashboard mode visualizes the committed GTX/RTX benchmark results and plots, while live image demo mode lets the presenter upload a real image, run the CUDA executable, and view the filtered output with timing and correctness metrics. This UI is presentation support only; the official speedup claims remain based on the synthetic benchmark CSV files.
+
 ### Proposal Alignment
 
 The final implementation follows and extends the original project proposal. The required sequential CPU baseline, naive CUDA implementation, shared-memory tiled implementation, constant-memory filter optimization, separable convolution path, correctness verification, and speedup analysis are all implemented. The benchmark matrix also includes the proposed large image sizes up to 4096x4096, multiple filter sizes from 3x3 to 11x11, and both kernel-only and total GPU timing.
@@ -146,6 +148,8 @@ Timing methodology required care. CPU time is measured with `std::chrono`; CUDA 
 Interpreting the new multi-output and register-tiled kernels also required care. These kernels change thread work assignment and local accumulator reuse, but they do not reduce the mathematical operation count. Therefore, they are best discussed as direct-convolution scheduling experiments, not as algorithmic reductions.
 
 Real-image demonstration was kept separate from official benchmarking. The project supports PGM input/output so that Sobel, sharpen, and Gaussian results can be shown visually, while the official performance matrix remains synthetic and reproducible.
+
+Live demo reliability was handled by separating the presentation system into two modes. Dashboard mode uses committed benchmark artifacts and is safe even without CUDA. Live image demo mode runs the executable on an uploaded image and reports real timing metrics, but it falls back to committed sample outputs if the executable or runtime is unavailable.
 
 ## 7. Conclusion and Future Improvements
 
