@@ -5,7 +5,9 @@ param(
     [int]$FilterSize = 3,
     [string]$Version = "cuda_shared_constant_filter",
     [string]$BlockSize = "16x16",
-    [string]$NormalizeOutput = "true"
+    [string]$NormalizeOutput = "true",
+    [int]$Warmups = 1,
+    [int]$Repeats = 5
 )
 
 Set-StrictMode -Version Latest
@@ -35,4 +37,7 @@ New-Item -ItemType Directory -Force -Path (Split-Path $OutputPath) | Out-Null
     --demo-filter-size $FilterSize `
     --demo-version $Version `
     --demo-block-size $BlockSize `
-    --demo-normalize-output $NormalizeOutput
+    --demo-normalize-output $NormalizeOutput `
+    --demo-warmups $Warmups `
+    --demo-repeats $Repeats
+

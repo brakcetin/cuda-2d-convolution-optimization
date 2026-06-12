@@ -38,7 +38,7 @@ FilterSpec generate_box_filter(int filter_size) {
 
 FilterSpec generate_gaussian_filter(int filter_size) {
     const int radius = filter_size / 2;
-    const float sigma = std::max(1.0f, static_cast<float>(filter_size) / 3.0f);
+    const float sigma = std::max(0.5f, static_cast<float>(filter_size) / 6.0f);
     const float denominator = 2.0f * sigma * sigma;
 
     FilterSpec spec;

@@ -24,6 +24,8 @@ struct DemoOptions {
     std::string version = "cuda_shared_constant_filter";
     BlockSize block_size = {16, 16};
     bool normalize_output = true;
+    int warmup_count = 1;
+    int repeat_count = 5;
 };
 
 struct ProgramOptions {
@@ -108,6 +110,8 @@ void print_usage(const char* executable_name) {
               << "  --demo-version cuda_shared_constant_filter\n"
               << "  --demo-block-size 16x16\n"
               << "  --demo-normalize-output true\n"
+              << "  --demo-warmups 1\n"
+              << "  --demo-repeats 5\n"
               << "  --help\n";
 }
 
@@ -164,6 +168,12 @@ ProgramOptions parse_arguments(int argc, char** argv) {
             const std::string normalized = normalize_name(value);
             options.demo.normalize_output = normalized == "true" || normalized == "1" ||
                                             normalized == "yes";
+        } else if (argument == "--demo-warmups") {
+            options.demo.enabled = true;
+            options.demo.warmup_count = std::stoi(value);
+        } else if (argument == "--demo-repeats") {
+            options.demo.enabled = true;
+            options.demo.repeat_count = std::stoi(value);
         } else {
             throw std::invalid_argument("Unknown argument: " + argument);
         }
@@ -244,6 +254,13 @@ void run_demo(const DemoOptions& options) {
     std::vector<float> gpu_output;
     CudaTiming timing;
     double cpu_time_ms = 0.0;
+
+    // Initialize CUDA context before timing, matching benchmark behavior.
+    // In benchmarks, get_cuda_device_name() calls cudaFree(nullptr) before any
+    // timing starts. Without this, the first cudaMalloc bears ~1000ms of
+    // one-time CUDA runtime initialization that inflates allocation_time.
+    CUDA_CHECK(cudaFree(nullptr));
+
     const auto cpu_start = std::chrono::high_resolution_clock::now();
     convolution_cpu(image.pixels,
                     reference,
@@ -258,23 +275,23 @@ void run_demo(const DemoOptions& options) {
     if (version == "naive" || version == "cuda_naive_global_memory") {
         convolution_cuda_naive(image.pixels, gpu_output, image.width, image.height,
                                filter.filter_2d, options.filter_size,
-                               options.block_size.width, options.block_size.height, 1, 1, timing);
+                               options.block_size.width, options.block_size.height, options.warmup_count, options.repeat_count, timing);
     } else if (version == "shared" || version == "cuda_shared_memory_tiled") {
         convolution_cuda_shared_memory_tiled(image.pixels, gpu_output, image.width, image.height,
                                              filter.filter_2d, options.filter_size,
-                                             options.block_size.width, options.block_size.height, 1, 1, timing);
+                                             options.block_size.width, options.block_size.height, options.warmup_count, options.repeat_count, timing);
     } else if (version == "constant" || version == "cuda_shared_constant_filter") {
         convolution_cuda_shared_constant_filter(image.pixels, gpu_output, image.width, image.height,
                                                 filter.filter_2d, options.filter_size,
-                                                options.block_size.width, options.block_size.height, 1, 1, timing);
+                                                options.block_size.width, options.block_size.height, options.warmup_count, options.repeat_count, timing);
     } else if (version == "multi" || version == "cuda_multi_output") {
         convolution_cuda_multi_output(image.pixels, gpu_output, image.width, image.height,
                                       filter.filter_2d, options.filter_size,
-                                      options.block_size.width, options.block_size.height, 1, 1, timing);
+                                      options.block_size.width, options.block_size.height, options.warmup_count, options.repeat_count, timing);
     } else if (version == "register" || version == "cuda_register_tiled") {
         convolution_cuda_register_tiled(image.pixels, gpu_output, image.width, image.height,
                                         filter.filter_2d, options.filter_size,
-                                        options.block_size.width, options.block_size.height, 1, 1, timing);
+                                        options.block_size.width, options.block_size.height, options.warmup_count, options.repeat_count, timing);
     } else if (version == "separable" || version == "cuda_separable") {
         if (!filter.separable) {
             throw std::invalid_argument("Demo version cuda_separable requires a separable filter type.");
@@ -291,7 +308,7 @@ void run_demo(const DemoOptions& options) {
             separable_cpu_stop - separable_cpu_start).count();
         convolution_cuda_separable(image.pixels, gpu_output, image.width, image.height,
                                    filter.filter_1d, options.filter_size,
-                                   options.block_size.width, options.block_size.height, 1, 1, timing);
+                                   options.block_size.width, options.block_size.height, options.warmup_count, options.repeat_count, timing);
     } else {
         throw std::invalid_argument("Unknown demo version: " + options.version);
     }

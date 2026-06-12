@@ -202,8 +202,8 @@ def prepare_upload(file_storage):
     image = Image.open(upload_original).convert("L")
     resized = False
     max_side = max(image.width, image.height)
-    if max_side > 2048:
-        scale = 2048.0 / float(max_side)
+    if max_side > 4096:
+        scale = 4096.0 / float(max_side)
         new_size = (max(1, int(image.width * scale)), max(1, int(image.height * scale)))
         image = image.resize(new_size, Image.Resampling.LANCZOS)
         resized = True
@@ -256,7 +256,8 @@ def parse_demo_stdout(stdout):
     return metrics
 
 
-def run_cuda_demo(input_pgm, output_pgm, filter_type, filter_size, version, block_size):
+def run_cuda_demo(input_pgm, output_pgm, filter_type, filter_size, version, block_size,
+                  normalize_output="true", warmups=1, repeats=5):
     executable = find_executable()
     if executable is None:
         raise FileNotFoundError(
@@ -271,7 +272,9 @@ def run_cuda_demo(input_pgm, output_pgm, filter_type, filter_size, version, bloc
         "--demo-filter-size", str(filter_size),
         "--demo-version", version,
         "--demo-block-size", block_size,
-        "--demo-normalize-output", "true",
+        "--demo-normalize-output", normalize_output,
+        "--demo-warmups", str(warmups),
+        "--demo-repeats", str(repeats),
     ]
     completed = subprocess.run(
         command,
@@ -303,10 +306,10 @@ def ensure_fallback_previews():
                 "dimensions": "1024x808",
                 "filter": "sobel 3x3",
                 "version": "cuda_shared_constant_filter",
-                "cpu_time_ms": 14.4491,
-                "gpu_kernel_time_ms": 0.212896,
-                "gpu_total_time_ms": 1457.27,
-                "kernel_speedup": 67.8693,
+                "cpu_time_ms": 13.3066,
+                "gpu_kernel_time_ms": 0.194534,
+                "gpu_total_time_ms": 6.49893,
+                "kernel_speedup": 68.4023,
                 "passed": True,
             },
         ),
@@ -318,10 +321,10 @@ def ensure_fallback_previews():
                 "dimensions": "1024x683",
                 "filter": "gaussian 11x11",
                 "version": "cuda_separable",
-                "cpu_time_ms": 21.3990,
-                "gpu_kernel_time_ms": 0.288352,
-                "gpu_total_time_ms": 1853.0,
-                "kernel_speedup": 74.2114,
+                "cpu_time_ms": 20.8574,
+                "gpu_kernel_time_ms": 0.297184,
+                "gpu_total_time_ms": 4.42648,
+                "kernel_speedup": 70.1835,
                 "passed": True,
             },
         ),
@@ -333,10 +336,10 @@ def ensure_fallback_previews():
                 "dimensions": "1024x683",
                 "filter": "sharpen 3x3",
                 "version": "cuda_shared_constant_filter",
-                "cpu_time_ms": 14.5537,
-                "gpu_kernel_time_ms": 0.164608,
-                "gpu_total_time_ms": 1943.04,
-                "kernel_speedup": 88.4143,
+                "cpu_time_ms": 11.9257,
+                "gpu_kernel_time_ms": 0.172109,
+                "gpu_total_time_ms": 6.30681,
+                "kernel_speedup": 69.2916,
                 "passed": True,
             },
         ),
@@ -348,10 +351,10 @@ def ensure_fallback_previews():
                 "dimensions": "768x1024",
                 "filter": "sobel 3x3",
                 "version": "cuda_shared_constant_filter",
-                "cpu_time_ms": 12.2333,
-                "gpu_kernel_time_ms": 0.210944,
-                "gpu_total_time_ms": 1351.14,
-                "kernel_speedup": 57.9931,
+                "cpu_time_ms": 16.5221,
+                "gpu_kernel_time_ms": 0.185235,
+                "gpu_total_time_ms": 4.40544,
+                "kernel_speedup": 89.1952,
                 "passed": True,
             },
         ),
@@ -449,6 +452,7 @@ def api_run_demo():
         run_id, width, height, resized, preview_path, input_pgm = prepare_upload(uploaded)
         output_pgm = OUTPUT_DIR / f"{run_id}_output.pgm"
         output_png = OUTPUT_DIR / f"{run_id}_output.png"
+        normalize_output = "false" if filter_type == "sharpen" else "true"
         command, stdout = run_cuda_demo(
             input_pgm,
             output_pgm,
@@ -456,8 +460,11 @@ def api_run_demo():
             filter_size,
             version,
             block_size,
+            normalize_output=normalize_output,
+            warmups=1,
+            repeats=5,
         )
-        image_to_png(output_pgm, output_png)
+        out_width, out_height = image_to_png(output_pgm, output_png)
         metrics = parse_demo_stdout(stdout)
         return jsonify({
             "ok": True,
