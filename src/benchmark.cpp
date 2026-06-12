@@ -146,28 +146,6 @@ bool has_version_alias(const std::set<std::string>& requested_versions,
            requested_versions.count(alias) > 0;
 }
 
-TimingStats run_cpu_repeats(const std::vector<float>& input,
-                            std::vector<float>& output,
-                            int width,
-                            int height,
-                            const std::vector<float>& filter,
-                            int filter_size,
-                            int repeat_count) {
-    repeat_count = std::max(repeat_count, 1);
-    std::vector<double> samples;
-    samples.reserve(static_cast<size_t>(repeat_count));
-
-    for (int repeat = 0; repeat < repeat_count; ++repeat) {
-        const auto cpu_start = std::chrono::high_resolution_clock::now();
-        convolution_cpu(input, output, width, height, filter, filter_size);
-        const auto cpu_stop = std::chrono::high_resolution_clock::now();
-        samples.push_back(std::chrono::duration<double, std::milli>(
-            cpu_stop - cpu_start).count());
-    }
-
-    return compute_timing_stats(samples);
-}
-
 }  // namespace
 
 CorrectnessMetrics compare_outputs(const std::vector<float>& reference,
@@ -191,6 +169,28 @@ CorrectnessMetrics compare_outputs(const std::vector<float>& reference,
                                  : total_abs_error / static_cast<double>(reference.size());
     metrics.passed = metrics.max_abs_error <= tolerance;
     return metrics;
+}
+
+TimingStats run_cpu_repeats(const std::vector<float>& input,
+                            std::vector<float>& output,
+                            int width,
+                            int height,
+                            const std::vector<float>& filter,
+                            int filter_size,
+                            int repeat_count) {
+    repeat_count = std::max(repeat_count, 1);
+    std::vector<double> samples;
+    samples.reserve(static_cast<size_t>(repeat_count));
+
+    for (int repeat = 0; repeat < repeat_count; ++repeat) {
+        const auto cpu_start = std::chrono::high_resolution_clock::now();
+        convolution_cpu(input, output, width, height, filter, filter_size);
+        const auto cpu_stop = std::chrono::high_resolution_clock::now();
+        samples.push_back(std::chrono::duration<double, std::milli>(
+            cpu_stop - cpu_start).count());
+    }
+
+    return compute_timing_stats(samples);
 }
 
 std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options) {

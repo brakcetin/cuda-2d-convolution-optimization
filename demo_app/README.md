@@ -11,6 +11,8 @@ The dashboard is the safe presentation fallback. The live demo depends on the CU
 
 The live demo is not GPU-only. Each run computes the single-threaded CPU reference first, then runs the selected CUDA version, compares CUDA output against CPU output, and reports both CPU and CUDA timings. A separate CPU-only dropdown is intentionally not needed for the presentation workflow.
 
+The live demo uses the exact measurement methodology of the official benchmark matrix (`scripts/run_benchmarks.ps1`): 5 timed CPU reference repeats (direct 2D convolution, averaged), then 1 untimed CUDA warmup launch followed by 5 timed launches measured with CUDA events. Reported times are averages, and the UI also shows min and standard deviation. Speedups are average CPU time divided by average kernel/total time, the same formula behind `results/timing_results*.csv`. For `cuda_separable`, correctness is compared against the separable CPU output while the speedup baseline remains the direct 2D CPU time, matching the benchmark. The only difference from the benchmark is that the image comes from the upload and the filter, filter size, CUDA version, and block size come from the form controls.
+
 ## Setup
 
 Run from the repository root in Windows PowerShell:
@@ -127,15 +129,15 @@ Control meanings:
 
 Metric meanings:
 
-- **CPU time:** single-threaded CPU reference time.
-- **Kernel time:** CUDA computation time only.
-- **Total GPU time:** allocation, host-to-device copy, kernel, device-to-host copy, and free time.
-- **Speedup:** CPU time divided by CUDA time. Kernel speedup can be high while total GPU time is worse for small images because GPU setup and transfer overhead dominate.
+- **CPU time:** single-threaded CPU reference time, averaged over 5 runs.
+- **Kernel time:** CUDA computation time only, averaged over 5 timed launches after 1 untimed warmup.
+- **Total GPU time:** allocation, host-to-device copy, kernel, device-to-host copy, and free time, averaged over the repeats.
+- **Speedup:** average CPU time divided by average CUDA time. Kernel speedup can be high while total GPU time is worse for small images because GPU setup and transfer overhead dominate.
 
 The live demo runs the executable like this:
 
 ```powershell
-convolution_benchmark.exe --demo-input input.pgm --demo-output output.pgm --demo-filter-type sobel --demo-filter-size 3 --demo-version cuda_shared_constant_filter --demo-block-size 16x16 --demo-normalize-output true
+convolution_benchmark.exe --demo-input input.pgm --demo-output output.pgm --demo-filter-type sobel --demo-filter-size 3 --demo-version cuda_shared_constant_filter --demo-block-size 16x16 --demo-normalize-output true --demo-warmups 1 --demo-repeats 5
 ```
 
 The implemented `cuda_separable` demo path accepts only `box` and `gaussian` filters.

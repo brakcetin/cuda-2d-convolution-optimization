@@ -6,7 +6,6 @@
 
 #include <algorithm>
 #include <cctype>
-#include <chrono>
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
@@ -24,6 +23,10 @@ struct DemoOptions {
     std::string version = "cuda_shared_constant_filter";
     BlockSize block_size = {16, 16};
     bool normalize_output = true;
+    // Same measurement defaults as BenchmarkOptions so demo runs follow the
+    // official benchmark methodology (1 untimed warmup + 5 timed repeats).
+    int warmup_count = 1;
+    int repeat_count = 5;
 };
 
 struct ProgramOptions {
@@ -108,6 +111,8 @@ void print_usage(const char* executable_name) {
               << "  --demo-version cuda_shared_constant_filter\n"
               << "  --demo-block-size 16x16\n"
               << "  --demo-normalize-output true\n"
+              << "  --demo-warmups 1\n"
+              << "  --demo-repeats 5\n"
               << "  --help\n";
 }
 
@@ -164,6 +169,12 @@ ProgramOptions parse_arguments(int argc, char** argv) {
             const std::string normalized = normalize_name(value);
             options.demo.normalize_output = normalized == "true" || normalized == "1" ||
                                             normalized == "yes";
+        } else if (argument == "--demo-warmups") {
+            options.demo.enabled = true;
+            options.demo.warmup_count = std::stoi(value);
+        } else if (argument == "--demo-repeats") {
+            options.demo.enabled = true;
+            options.demo.repeat_count = std::stoi(value);
         } else {
             throw std::invalid_argument("Unknown argument: " + argument);
         }
@@ -172,6 +183,12 @@ ProgramOptions parse_arguments(int argc, char** argv) {
     if (options.demo.enabled) {
         if (options.demo.input_path.empty() || options.demo.output_path.empty()) {
             throw std::invalid_argument("Demo mode requires --demo-input and --demo-output.");
+        }
+        if (options.demo.repeat_count <= 0) {
+            throw std::invalid_argument("Demo repeat count must be positive.");
+        }
+        if (options.demo.warmup_count < 0) {
+            throw std::invalid_argument("Demo warm-up count must not be negative.");
         }
         return options;
     }
@@ -196,27 +213,19 @@ void run_demo(const DemoOptions& options) {
     const FilterSpec filter = generate_filter_spec(options.filter_type, options.filter_size);
     const std::string version = normalize_name(options.version);
 
-    std::vector<float> cpu_output;
+    // The demo follows the official benchmark methodology exactly: the CPU
+    // reference is the direct 2D convolution timed repeat_count times with the
+    // average reported, and CUDA versions run warmup_count untimed launches
+    // followed by repeat_count timed launches (see run_benchmarks).
     if (version == "cpu" || version == "cpu_sequential") {
-        const auto cpu_start = std::chrono::high_resolution_clock::now();
-        if (filter.separable && filter.type != "sharpen" && filter.type != "sobel") {
-            convolution_cpu_separable(image.pixels,
-                                      cpu_output,
-                                      image.width,
-                                      image.height,
-                                      filter.filter_1d,
-                                      options.filter_size);
-        } else {
-            convolution_cpu(image.pixels,
-                            cpu_output,
-                            image.width,
-                            image.height,
-                            filter.filter_2d,
-                            options.filter_size);
-        }
-        const auto cpu_stop = std::chrono::high_resolution_clock::now();
-        const double cpu_time_ms =
-            std::chrono::duration<double, std::milli>(cpu_stop - cpu_start).count();
+        std::vector<float> cpu_output;
+        const TimingStats cpu_stats = run_cpu_repeats(image.pixels,
+                                                      cpu_output,
+                                                      image.width,
+                                                      image.height,
+                                                      filter.filter_2d,
+                                                      options.filter_size,
+                                                      options.repeat_count);
         write_pgm_image(options.output_path,
                         cpu_output,
                         image.width,
@@ -229,7 +238,12 @@ void run_demo(const DemoOptions& options) {
                   << options.filter_size << '\n'
                   << "Block size: " << options.block_size.width << "x"
                   << options.block_size.height << '\n'
-                  << "CPU time ms: " << cpu_time_ms << '\n'
+                  << "Warmup runs: 0\n"
+                  << "Timed repeats: " << std::max(options.repeat_count, 1) << '\n'
+                  << "CPU time ms: " << cpu_stats.average_ms << '\n'
+                  << "CPU min time ms: " << cpu_stats.min_ms << '\n'
+                  << "CPU max time ms: " << cpu_stats.max_ms << '\n'
+                  << "CPU stddev time ms: " << cpu_stats.stddev_ms << '\n'
                   << "GPU kernel time ms: 0\n"
                   << "GPU total time ms: 0\n"
                   << "Kernel speedup: 0\n"
@@ -240,64 +254,72 @@ void run_demo(const DemoOptions& options) {
         return;
     }
 
+    // CPU reference: same call as the benchmark (direct 2D convolution,
+    // repeat_count timed runs, average used for speedups).
     std::vector<float> reference;
+    const TimingStats cpu_stats = run_cpu_repeats(image.pixels,
+                                                  reference,
+                                                  image.width,
+                                                  image.height,
+                                                  filter.filter_2d,
+                                                  options.filter_size,
+                                                  options.repeat_count);
+
     std::vector<float> gpu_output;
     CudaTiming timing;
-    double cpu_time_ms = 0.0;
-    const auto cpu_start = std::chrono::high_resolution_clock::now();
-    convolution_cpu(image.pixels,
-                    reference,
-                    image.width,
-                    image.height,
-                    filter.filter_2d,
-                    options.filter_size);
-    const auto cpu_stop = std::chrono::high_resolution_clock::now();
-    cpu_time_ms =
-        std::chrono::duration<double, std::milli>(cpu_stop - cpu_start).count();
+    const int warmups = options.warmup_count;
+    const int repeats = options.repeat_count;
+    // Like the benchmark, cuda_separable is checked against the separable CPU
+    // output while its speedup is still measured against the direct 2D CPU time.
+    const std::vector<float>* correctness_reference = &reference;
+    std::vector<float> separable_reference;
 
     if (version == "naive" || version == "cuda_naive_global_memory") {
         convolution_cuda_naive(image.pixels, gpu_output, image.width, image.height,
                                filter.filter_2d, options.filter_size,
-                               options.block_size.width, options.block_size.height, 1, 1, timing);
+                               options.block_size.width, options.block_size.height,
+                               warmups, repeats, timing);
     } else if (version == "shared" || version == "cuda_shared_memory_tiled") {
         convolution_cuda_shared_memory_tiled(image.pixels, gpu_output, image.width, image.height,
                                              filter.filter_2d, options.filter_size,
-                                             options.block_size.width, options.block_size.height, 1, 1, timing);
+                                             options.block_size.width, options.block_size.height,
+                                             warmups, repeats, timing);
     } else if (version == "constant" || version == "cuda_shared_constant_filter") {
         convolution_cuda_shared_constant_filter(image.pixels, gpu_output, image.width, image.height,
                                                 filter.filter_2d, options.filter_size,
-                                                options.block_size.width, options.block_size.height, 1, 1, timing);
+                                                options.block_size.width, options.block_size.height,
+                                                warmups, repeats, timing);
     } else if (version == "multi" || version == "cuda_multi_output") {
         convolution_cuda_multi_output(image.pixels, gpu_output, image.width, image.height,
                                       filter.filter_2d, options.filter_size,
-                                      options.block_size.width, options.block_size.height, 1, 1, timing);
+                                      options.block_size.width, options.block_size.height,
+                                      warmups, repeats, timing);
     } else if (version == "register" || version == "cuda_register_tiled") {
         convolution_cuda_register_tiled(image.pixels, gpu_output, image.width, image.height,
                                         filter.filter_2d, options.filter_size,
-                                        options.block_size.width, options.block_size.height, 1, 1, timing);
+                                        options.block_size.width, options.block_size.height,
+                                        warmups, repeats, timing);
     } else if (version == "separable" || version == "cuda_separable") {
         if (!filter.separable) {
             throw std::invalid_argument("Demo version cuda_separable requires a separable filter type.");
         }
-        const auto separable_cpu_start = std::chrono::high_resolution_clock::now();
         convolution_cpu_separable(image.pixels,
-                                  reference,
+                                  separable_reference,
                                   image.width,
                                   image.height,
                                   filter.filter_1d,
                                   options.filter_size);
-        const auto separable_cpu_stop = std::chrono::high_resolution_clock::now();
-        cpu_time_ms = std::chrono::duration<double, std::milli>(
-            separable_cpu_stop - separable_cpu_start).count();
+        correctness_reference = &separable_reference;
         convolution_cuda_separable(image.pixels, gpu_output, image.width, image.height,
                                    filter.filter_1d, options.filter_size,
-                                   options.block_size.width, options.block_size.height, 1, 1, timing);
+                                   options.block_size.width, options.block_size.height,
+                                   warmups, repeats, timing);
     } else {
         throw std::invalid_argument("Unknown demo version: " + options.version);
     }
 
     const CorrectnessMetrics metrics =
-        compare_outputs(reference, gpu_output, kCorrectnessTolerance);
+        compare_outputs(*correctness_reference, gpu_output, kCorrectnessTolerance);
     write_pgm_image(options.output_path,
                     gpu_output,
                     image.width,
@@ -306,19 +328,31 @@ void run_demo(const DemoOptions& options) {
 
     std::cout << "Demo output written to " << options.output_path << '\n'
               << "Version: " << options.version << '\n'
+              << "Device: " << get_cuda_device_name() << '\n'
               << "Image: " << image.width << "x" << image.height << '\n'
               << "Filter: " << filter.type << " " << options.filter_size << "x"
               << options.filter_size << '\n'
               << "Block size: " << options.block_size.width << "x"
               << options.block_size.height << '\n'
-              << "CPU time ms: " << cpu_time_ms << '\n'
+              << "Warmup runs: " << std::max(warmups, 0) << '\n'
+              << "Timed repeats: " << std::max(repeats, 1) << '\n'
+              << "CPU time ms: " << cpu_stats.average_ms << '\n'
+              << "CPU min time ms: " << cpu_stats.min_ms << '\n'
+              << "CPU max time ms: " << cpu_stats.max_ms << '\n'
+              << "CPU stddev time ms: " << cpu_stats.stddev_ms << '\n'
               << "GPU kernel time ms: " << timing.kernel_time_ms << '\n'
+              << "GPU kernel min time ms: " << timing.kernel_stats.min_ms << '\n'
+              << "GPU kernel max time ms: " << timing.kernel_stats.max_ms << '\n'
+              << "GPU kernel stddev time ms: " << timing.kernel_stats.stddev_ms << '\n'
               << "GPU total time ms: " << timing.total_time_ms << '\n'
+              << "GPU total min time ms: " << timing.total_stats.min_ms << '\n'
+              << "GPU total max time ms: " << timing.total_stats.max_ms << '\n'
+              << "GPU total stddev time ms: " << timing.total_stats.stddev_ms << '\n'
               << "Kernel speedup: "
-              << (timing.kernel_time_ms > 0.0 ? cpu_time_ms / timing.kernel_time_ms : 0.0)
+              << (timing.kernel_time_ms > 0.0 ? cpu_stats.average_ms / timing.kernel_time_ms : 0.0)
               << '\n'
               << "Total speedup: "
-              << (timing.total_time_ms > 0.0 ? cpu_time_ms / timing.total_time_ms : 0.0)
+              << (timing.total_time_ms > 0.0 ? cpu_stats.average_ms / timing.total_time_ms : 0.0)
               << '\n'
               << "GPU allocation time ms: " << timing.allocation_time_ms << '\n'
               << "GPU host-to-device time ms: " << timing.host_to_device_time_ms << '\n'

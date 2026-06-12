@@ -19,6 +19,14 @@ CorrectnessMetrics compare_outputs(const std::vector<float>& reference,
                                    const std::vector<float>& candidate,
                                    float tolerance);
 
+TimingStats run_cpu_repeats(const std::vector<float>& input,
+                            std::vector<float>& output,
+                            int width,
+                            int height,
+                            const std::vector<float>& filter,
+                            int filter_size,
+                            int repeat_count);
+
 std::vector<BenchmarkResult> run_benchmarks(const BenchmarkOptions& options);
 
 void write_results_csv(const std::string& path,

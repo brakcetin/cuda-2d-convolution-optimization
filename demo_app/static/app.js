@@ -246,12 +246,19 @@ function metricValue(metrics, ...keys) {
 function renderLiveResult(result) {
   const metrics = result.metrics || {};
   const kernelTime = metricValue(metrics, "gpu_kernel_time_ms", "kernel_time_ms");
+  const repeats = metricValue(metrics, "timed_repeats") ?? result.timed_repeats ?? 5;
+  const warmups = metricValue(metrics, "warmup_runs") ?? result.warmup_runs ?? 1;
+  const spread = (min, stddev) =>
+    min === undefined ? "" : ` | min ${formatNumber(min)} ms, stddev ${formatNumber(stddev)} ms`;
   document.getElementById("liveMetrics").innerHTML = [
     card("Dimensions", `${result.width}x${result.height}`, result.resized ? "resized for demo stability" : "uploaded size"),
-    card("CPU time", `${formatNumber(metrics.cpu_time_ms)} ms`, "single-threaded reference"),
-    card("Kernel time", `${formatNumber(kernelTime)} ms`, labelVersion(result.version)),
-    card("Total GPU time", `${formatNumber(metrics.gpu_total_time_ms)} ms`, "allocation + copies + kernel"),
-    card("Kernel speedup", `${formatNumber(metrics.kernel_speedup)}x`, "CPU / kernel time"),
+    card("CPU time", `${formatNumber(metrics.cpu_time_ms)} ms`,
+      `single-threaded reference, avg of ${repeats} runs${spread(metrics.cpu_min_time_ms, metrics.cpu_stddev_time_ms)}`),
+    card("Kernel time", `${formatNumber(kernelTime)} ms`,
+      `${labelVersion(result.version)}, ${warmups} warmup + avg of ${repeats} timed launches${spread(metrics.gpu_kernel_min_time_ms, metrics.gpu_kernel_stddev_time_ms)}`),
+    card("Total GPU time", `${formatNumber(metrics.gpu_total_time_ms)} ms`,
+      "allocation + copies + kernel, averaged over repeats"),
+    card("Kernel speedup", `${formatNumber(metrics.kernel_speedup)}x`, "avg CPU time / avg kernel time"),
     card("Correctness", metrics.passed ? "passed" : "failed", `max error ${formatNumber(metrics.max_abs_error, 6)}`),
   ].join("");
 
@@ -348,7 +355,8 @@ function setupLiveForm() {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     message.className = "message";
-    message.textContent = "Running CPU reference and selected CUDA executable...";
+    message.textContent =
+      "Running benchmark-style measurement: 5 timed CPU reference runs, then 1 warmup + 5 timed CUDA launches...";
 
     const formData = new FormData(form);
     try {
@@ -361,7 +369,8 @@ function setupLiveForm() {
         throw new Error(result.error || "Live demo failed.");
       }
       message.className = "message ok";
-      message.textContent = "CPU reference and CUDA demo completed successfully.";
+      message.textContent =
+        "Done. Reported times are averages over 5 timed repeats (1 CUDA warmup excluded), the same methodology as the official benchmark.";
       renderLiveResult(result);
     } catch (error) {
       message.className = "message error";

@@ -122,8 +122,11 @@
             <div>
               <h2>Run CPU Reference And CUDA On An Uploaded Image</h2>
               <p>
-                The backend converts the uploaded image to grayscale PGM, runs the single-threaded CPU
-                reference first, then runs the selected CUDA version and compares CUDA output against CPU.
+                The backend converts the uploaded image to grayscale PGM and measures exactly like the
+                official benchmark: the single-threaded CPU reference runs 5 times, then the selected CUDA
+                version runs 1 untimed warmup launch plus 5 timed launches (CUDA events). Reported times are
+                averages, with min and standard deviation shown next to them, and CUDA output is compared
+                against the CPU reference for correctness.
               </p>
             </div>
           </div>
@@ -184,7 +187,8 @@
           </form>
 
           <div class="message" id="liveMessage">
-            Ready. Upload an image and run CPU reference plus the selected CUDA convolution version.
+            Ready. Upload an image and run the benchmark-style measurement: 5 CPU reference runs plus
+            1 warmup and 5 timed launches of the selected CUDA version.
           </div>
         </section>
 
@@ -195,19 +199,19 @@
           <div class="explain-grid">
             <div>
               <h3>CPU time</h3>
-              <p>Single-threaded CPU reference time. On very small images this can be lower than total GPU time because there is little work.</p>
+              <p>Average of 5 single-threaded direct-convolution reference runs, the same CPU baseline the benchmark CSVs use. On very small images this can be lower than total GPU time.</p>
             </div>
             <div>
               <h3>Kernel time</h3>
-              <p>CUDA computation time only. This is where the GPU normally looks strongest.</p>
+              <p>Average of 5 timed CUDA launches measured with CUDA events after 1 untimed warmup launch. Min and standard deviation are shown next to the average.</p>
             </div>
             <div>
               <h3>Total GPU time</h3>
-              <p>Allocation, host-to-device copy, kernel, device-to-host copy, and free time. For small images, overhead can dominate.</p>
+              <p>Allocation, host-to-device copy, kernel, device-to-host copy, and free time, averaged over the 5 repeats. For small images, overhead can dominate.</p>
             </div>
             <div>
               <h3>Speedup</h3>
-              <p>Kernel speedup is CPU time divided by kernel time. Total speedup is stricter because it includes transfer overhead.</p>
+              <p>Kernel speedup is average CPU time divided by average kernel time, exactly as in the benchmark results. For separable runs the CPU baseline is still the direct 2D convolution, so algorithmic savings count toward the speedup.</p>
             </div>
           </div>
         </section>
@@ -236,7 +240,7 @@
           <div class="section-head">
             <div>
               <h2>Fallback Real-Image Demo Outputs</h2>
-              <p>These committed outputs keep the presentation safe if the live executable is unavailable. The timing rows show CPU reference time, CUDA kernel time, and total GPU time from the local demo run. Total GPU time may include CUDA process/context startup overhead, so kernel time is the cleaner compute comparison.</p>
+              <p>These committed outputs keep the presentation safe if the live executable is unavailable. The timing rows are recorded single-run demo measurements from the GTX 1650 machine, taken before the live demo switched to the 5-repeat benchmark methodology, so they are indicative rather than directly comparable to live results. Total GPU time may include CUDA process/context startup overhead, so kernel time is the cleaner compute comparison.</p>
             </div>
           </div>
           <div class="sample-grid" id="sampleGrid"></div>

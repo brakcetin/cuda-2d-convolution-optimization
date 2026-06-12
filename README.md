@@ -361,6 +361,8 @@ Use these steps when you want to show the project during the presentation. Run a
 
    There is no separate CPU-only selector in the live UI because every live CUDA run already executes the single-threaded CPU reference first. The selected CUDA version is then run, timed, and compared against that CPU output. The UI shows both `CPU time` and CUDA timing metrics.
 
+   The live demo measures with the same methodology as the official benchmark matrix: the CPU reference (direct 2D convolution) runs 5 timed repeats, the CUDA version runs 1 untimed warmup launch followed by 5 timed launches measured with CUDA events, and reported numbers are averages with min/max/standard deviation. Speedups are computed from the averages, exactly as in `results/timing_results*.csv`. For `cuda_separable`, correctness is checked against the separable CPU output while the speedup baseline stays the direct 2D CPU time, matching the benchmark. The demo CLI accepts `--demo-warmups` and `--demo-repeats` (defaults 1 and 5).
+
    The Live Demo UI hides combinations that are outside the implemented separable path. `cuda_separable` is shown only for `box` and `gaussian`. Sobel is benchmarked as a direct 2D filter in this project even though a separate derivative-plus-smoothing Sobel implementation could be written; sharpen is not a single rank-1 separable filter in its canonical 3x3 form.
 
    Control meanings:
@@ -372,9 +374,9 @@ Use these steps when you want to show the project during the presentation. Run a
 
    Metric meanings:
 
-   - `CPU time`: single-threaded CPU reference time.
-   - `Kernel time`: CUDA compute time only.
-   - `Total GPU time`: allocation, host-to-device copy, kernel, device-to-host copy, and free time.
+   - `CPU time`: single-threaded CPU reference time, averaged over 5 runs.
+   - `Kernel time`: CUDA compute time only, averaged over 5 timed launches after 1 warmup.
+   - `Total GPU time`: allocation, host-to-device copy, kernel, device-to-host copy, and free time, averaged over the repeats.
    - For small images, CPU time can be lower than total GPU time because GPU setup and memory-transfer overhead dominate. Kernel time is usually the clearest view of raw GPU compute speed.
    - In filter-type plots, missing or broken `cuda_separable` points for `sobel` and `sharpen` mean "not included in this separable benchmark path", not failed or zero speedup. Separable convolution is only implemented for box and Gaussian filters in this project.
 

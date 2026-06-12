@@ -38,6 +38,12 @@ CUDA_VERSIONS = {
 }
 BLOCK_SIZES = {"8x8", "16x16", "32x8", "32x16"}
 
+# Same measurement methodology as scripts/run_benchmarks.ps1: one untimed
+# warmup launch followed by five timed repeats, averages reported.
+DEMO_WARMUP_RUNS = 1
+DEMO_TIMED_REPEATS = 5
+DEMO_TIMEOUT_SECONDS = 180
+
 app = Flask(__name__, static_folder=str(DEMO_ROOT / "static"), static_url_path="")
 
 
@@ -234,8 +240,17 @@ def parse_demo_stdout(stdout):
 
     for key in (
         "cpu_time_ms",
+        "cpu_min_time_ms",
+        "cpu_max_time_ms",
+        "cpu_stddev_time_ms",
         "gpu_kernel_time_ms",
+        "gpu_kernel_min_time_ms",
+        "gpu_kernel_max_time_ms",
+        "gpu_kernel_stddev_time_ms",
         "gpu_total_time_ms",
+        "gpu_total_min_time_ms",
+        "gpu_total_max_time_ms",
+        "gpu_total_stddev_time_ms",
         "kernel_speedup",
         "total_speedup",
         "gpu_allocation_time_ms",
@@ -249,6 +264,12 @@ def parse_demo_stdout(stdout):
         if key in metrics:
             try:
                 metrics[key] = float(metrics[key])
+            except ValueError:
+                pass
+    for key in ("warmup_runs", "timed_repeats"):
+        if key in metrics:
+            try:
+                metrics[key] = int(metrics[key])
             except ValueError:
                 pass
     if "passed" in metrics:
@@ -272,13 +293,15 @@ def run_cuda_demo(input_pgm, output_pgm, filter_type, filter_size, version, bloc
         "--demo-version", version,
         "--demo-block-size", block_size,
         "--demo-normalize-output", "true",
+        "--demo-warmups", str(DEMO_WARMUP_RUNS),
+        "--demo-repeats", str(DEMO_TIMED_REPEATS),
     ]
     completed = subprocess.run(
         command,
         cwd=REPO_ROOT,
         text=True,
         capture_output=True,
-        timeout=60,
+        timeout=DEMO_TIMEOUT_SECONDS,
         check=False,
     )
     if completed.returncode != 0:
@@ -468,6 +491,8 @@ def api_run_demo():
             "filter_size": int(filter_size),
             "version": version,
             "block_size": block_size,
+            "warmup_runs": DEMO_WARMUP_RUNS,
+            "timed_repeats": DEMO_TIMED_REPEATS,
             "original_url": f"/generated/{preview_path.name}",
             "output_url": f"/generated/{output_png.name}",
             "metrics": metrics,
@@ -475,7 +500,10 @@ def api_run_demo():
             "stdout": stdout,
         })
     except subprocess.TimeoutExpired:
-        return jsonify({"ok": False, "error": "CUDA demo timed out after 60 seconds."}), 504
+        return jsonify({
+            "ok": False,
+            "error": f"CUDA demo timed out after {DEMO_TIMEOUT_SECONDS} seconds.",
+        }), 504
     except Exception as error:
         return jsonify({"ok": False, "error": str(error)}), 500
 

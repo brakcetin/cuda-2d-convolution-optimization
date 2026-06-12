@@ -298,3 +298,19 @@ The live demo wording was updated because the UI looked like it only ran on the 
 4. Report CPU time, CUDA kernel time, total GPU time, speedup, and correctness.
 
 The button now says `Run CPU + CUDA Demo`, and the panel title explains that the CPU reference runs first. A separate CPU-only dropdown is not needed for the presentation because CPU is already used as the correctness oracle and timing baseline in every live demo run.
+
+## Benchmark-Parity Measurement In The Live Demo
+
+The live demo previously measured differently from the official benchmark: the CPU reference ran once, the CUDA kernel ran with 1 warmup but only 1 timed repeat, and for `cuda_separable` the CPU baseline was a single separable CPU run. The demo now follows `run_benchmarks` exactly:
+
+1. CPU reference: 5 timed repeats of the direct 2D convolution via the same `run_cpu_repeats` function the benchmark uses (now exposed in `benchmark.h`). The reported `CPU time ms` is the average; min/max/stddev are printed too.
+2. CUDA: 1 untimed warmup launch followed by 5 timed launches measured with CUDA events, exactly as in the benchmark wrappers. `GPU kernel time ms` and `GPU total time ms` are averages with min/max/stddev printed alongside.
+3. Speedups: average CPU time divided by average kernel/total time, the same formula as `results/timing_results*.csv`.
+4. `cuda_separable`: correctness is compared against the separable CPU output (computed once, untimed) while the speedup baseline stays the direct 2D CPU average, matching how the benchmark produced the official separable speedups.
+5. The CPU-only demo version (`--demo-version cpu`, CLI only) also runs 5 timed repeats of the direct 2D convolution now, so its number matches the CPU baseline used in CUDA rows.
+
+New demo CLI flags `--demo-warmups` (default 1) and `--demo-repeats` (default 5) control the counts; `demo_app/server.py` passes `--demo-warmups 1 --demo-repeats 5` explicitly and its subprocess timeout was raised from 60 to 180 seconds because the CPU reference now runs five times. The stdout block additionally reports `Device`, `Warmup runs`, `Timed repeats`, and the min/max/stddev lines; the server parses all of them and the live UI shows averages with min and stddev next to the CPU and kernel cards.
+
+Because the live demo now reports 5-repeat averages, the recorded fallback sample timings (single-run measurements from the GTX 1650 machine) are labeled as indicative single-run values in the UI. The committed PGM outputs are unaffected: repeated kernel launches write the same deterministic result, which was re-verified after the change (`Passed: true`, max abs error 0 for Sobel cases and ~3.6e-7 for separable Gaussian).
+
+The only intended difference between the live demo and the benchmark remains: the image comes from the upload, and filter type, filter size, CUDA version, and block size come from the form controls.
