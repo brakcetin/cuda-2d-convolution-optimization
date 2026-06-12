@@ -79,7 +79,7 @@
             <div>
               <h2>Benchmark Plots</h2>
               <p>GTX 1650 and RTX 4070 plots are paired side by side when the same plot exists for both GPUs. Hardware-comparison plots combine both GPUs in one figure.</p>
-              <p>Missing points or broken lines mean that version is not mathematically applicable for that filter, for example separable convolution on Sobel or sharpen.</p>
+              <p>Missing points or broken lines mean that version is not part of this benchmark path for that filter. In this demo, `cuda_separable` is implemented for box and Gaussian only; Sobel and sharpen are measured as direct 2D filters.</p>
             </div>
           </div>
           <div class="plot-grid" id="plotGrid"></div>
@@ -105,6 +105,14 @@
             <div>
               <h3>What metrics mean</h3>
               <p>Timing depends mainly on dimensions, filter size, CUDA version, block size, GPU model, and memory transfer overhead.</p>
+            </div>
+            <div>
+              <h3>Why no separable Sobel?</h3>
+              <p>Sobel can be implemented as smoothing plus derivative 1D passes, but this project keeps Sobel in the direct 2D group to compare memory-hierarchy kernels fairly.</p>
+            </div>
+            <div>
+              <h3>Why no separable sharpen?</h3>
+              <p>The canonical 3x3 sharpen kernel is not a single rank-1 separable filter. It is better treated as direct convolution here.</p>
             </div>
           </div>
         </section>
@@ -228,7 +236,7 @@
           <div class="section-head">
             <div>
               <h2>Fallback Real-Image Demo Outputs</h2>
-              <p>These committed outputs keep the presentation safe if the live executable is unavailable.</p>
+              <p>These committed outputs keep the presentation safe if the live executable is unavailable. The timing rows show CPU reference time, CUDA kernel time, and total GPU time from the local demo run. Total GPU time may include CUDA process/context startup overhead, so kernel time is the cleaner compute comparison.</p>
             </div>
           </div>
           <div class="sample-grid" id="sampleGrid"></div>

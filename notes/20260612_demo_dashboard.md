@@ -265,3 +265,25 @@ Dashboard loading was also improved:
 - fallback real-image previews are regenerated only if the source image/output changed
 - `/api/sample-demo` is loaded only when Live Image Demo Mode is opened
 - Dashboard Mode loads benchmark summaries and plots first
+
+## Real-Image Sample Timing Cards
+
+The fallback real-image sample cards were updated to show the timing context for each committed demo output:
+
+```text
+Building Sobel: CPU 14.4491 ms, GPU kernel 0.212896 ms, GPU total 1457.27 ms, kernel speedup 67.8693x
+Portrait Gaussian: CPU 21.3990 ms, GPU kernel 0.288352 ms, GPU total 1853.0 ms, kernel speedup 74.2114x
+Portrait Sharpen: CPU 14.5537 ms, GPU kernel 0.164608 ms, GPU total 1943.04 ms, kernel speedup 88.4143x
+Texture Sobel: CPU 12.2333 ms, GPU kernel 0.210944 ms, GPU total 1351.14 ms, kernel speedup 57.9931x
+```
+
+These are local presentation-demo timings, not official benchmark claims. The total GPU time is high because each demo is launched as a separate process and can include CUDA context/startup overhead. The cleaner compute comparison is the CUDA kernel time.
+
+## Separable Sobel And Sharpen Clarification
+
+The wording was clarified:
+
+- Box and Gaussian are separable in the implemented benchmark path because each 2D filter is generated as an outer product of one 1D vector.
+- Sobel can be implemented separably in theory, for example as a smoothing vector times a derivative vector, but that requires a Sobel-specific two-vector separable path. This project deliberately keeps Sobel in the direct-convolution group to compare naive/shared/shared+constant/register/multi-output kernels.
+- The canonical sharpen kernel used here is not a single rank-1 separable filter, so it is treated as direct convolution.
+- Therefore missing `cuda_separable` points for Sobel/sharpen mean "not included in this implementation path", not "GPU failed".

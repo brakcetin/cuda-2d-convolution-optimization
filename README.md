@@ -359,7 +359,7 @@ Use these steps when you want to show the project during the presentation. Run a
 
    The visual output is the filtered convolution result, not a copy of the input. Correctness is judged by comparing the CUDA result with the CPU reference using max/mean absolute error.
 
-   The Live Demo UI hides incompatible combinations. `cuda_separable` is shown only for `box` and `gaussian`, because Sobel and sharpen are direct 2D filters in this project.
+   The Live Demo UI hides combinations that are outside the implemented separable path. `cuda_separable` is shown only for `box` and `gaussian`. Sobel is benchmarked as a direct 2D filter in this project even though a separate derivative-plus-smoothing Sobel implementation could be written; sharpen is not a single rank-1 separable filter in its canonical 3x3 form.
 
    Control meanings:
 
@@ -374,7 +374,7 @@ Use these steps when you want to show the project during the presentation. Run a
    - `Kernel time`: CUDA compute time only.
    - `Total GPU time`: allocation, host-to-device copy, kernel, device-to-host copy, and free time.
    - For small images, CPU time can be lower than total GPU time because GPU setup and memory-transfer overhead dominate. Kernel time is usually the clearest view of raw GPU compute speed.
-   - In filter-type plots, missing or broken `cuda_separable` points for `sobel` and `sharpen` mean "not applicable", not failed or zero speedup. Separable convolution is only used for box and Gaussian filters in this project.
+   - In filter-type plots, missing or broken `cuda_separable` points for `sobel` and `sharpen` mean "not included in this separable benchmark path", not failed or zero speedup. Separable convolution is only implemented for box and Gaussian filters in this project.
 
 10. Stop the dashboard after the presentation:
 
@@ -389,7 +389,7 @@ Troubleshooting:
 - If Flask or Pillow is missing, run `python -m pip install -r demo_app\requirements.txt`.
 - If the app says the CUDA executable is missing, rerun `.\scripts\configure_release.ps1` and `.\scripts\build_release.ps1`.
 - If port `5000` is busy, run `.\scripts\run_demo_dashboard.ps1 -Port 5001` and open `http://127.0.0.1:5001`.
-- If `cuda_separable` gives a validation error, choose `box` or `gaussian`; separable convolution is not valid for `sobel` or `sharpen` in this project.
+- If `cuda_separable` gives a validation error, choose `box` or `gaussian`; this project implements the separable path only for those filters.
 - If a virtual environment is created but `pip` is unavailable, use the non-venv command from the repository root: `python -m pip install -r demo_app\requirements.txt`.
 - If Chrome reports `ERR_NO_BUFFER_SPACE` for `app.js`, the Flask server is usually still working. Stop the server with `Ctrl+C`, close extra browser tabs, restart the dashboard on another port with `.\scripts\run_demo_dashboard.ps1 -Port 5001`, and open `http://127.0.0.1:5001`. Edge or an incognito Chrome window is also a good fallback.
 

@@ -114,7 +114,7 @@ Expected visual meaning:
 
 The output image is not expected to be identical to the input image. Correctness is judged numerically against the CPU reference using max/mean absolute error; the visual output shows what the selected filter does.
 
-The UI hides incompatible CUDA choices. In this project, `cuda_separable` is only shown for `box` and `gaussian` because Sobel and sharpen are treated as direct 2D filters.
+The UI hides CUDA choices that are outside the implemented separable path. In this project, `cuda_separable` is only shown for `box` and `gaussian`. Sobel is treated as a direct 2D benchmark filter here, although a separate Sobel-specific separable derivative/smoothing implementation could be added. The canonical sharpen filter is not a single rank-1 separable filter.
 
 Control meanings:
 
@@ -136,7 +136,7 @@ The live demo runs the executable like this:
 convolution_benchmark.exe --demo-input input.pgm --demo-output output.pgm --demo-filter-type sobel --demo-filter-size 3 --demo-version cuda_shared_constant_filter --demo-block-size 16x16 --demo-normalize-output true
 ```
 
-`cuda_separable` is valid only for `box` and `gaussian` filters.
+The implemented `cuda_separable` demo path accepts only `box` and `gaussian` filters.
 
 Images larger than 2048 pixels on their longest side are resized for presentation stability.
 
@@ -155,7 +155,7 @@ Official performance claims should still come from the committed synthetic bench
 - **Flask or Pillow missing:** run `pip install -r requirements.txt`.
 - **CUDA executable not found:** run `scripts/configure_release.ps1` and `scripts/build_release.ps1`.
 - **Live demo fails:** use Dashboard Mode and fallback sample outputs; the committed benchmark evidence remains available.
-- **Separable error:** choose `box` or `gaussian` when using `cuda_separable`.
+- **Separable error:** choose `box` or `gaussian` when using the current `cuda_separable` implementation.
 - **Virtual environment has no pip:** return to the repository root and run `python -m pip install -r demo_app\requirements.txt`.
 - **Port 5000 is busy:** run `scripts/run_demo_dashboard.ps1 -Port 5001`.
 - **Chrome shows `ERR_NO_BUFFER_SPACE` for `app.js`:** stop the Flask server with `Ctrl+C`, close extra browser tabs, restart on another port with `scripts/run_demo_dashboard.ps1 -Port 5001`, and open `http://127.0.0.1:5001`. If needed, use Edge or an incognito Chrome window.

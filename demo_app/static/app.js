@@ -10,6 +10,17 @@ const formatNumber = (value, digits = 3) => {
   return number.toFixed(digits).replace(/\.?0+$/, "");
 };
 
+const sampleMetricTable = (metrics = {}) => `
+  <div class="sample-metrics">
+    <div><span>Image</span><strong>${metrics.dimensions || "n/a"}</strong></div>
+    <div><span>Filter</span><strong>${metrics.filter || "n/a"}</strong></div>
+    <div><span>CPU</span><strong>${formatNumber(metrics.cpu_time_ms)} ms</strong></div>
+    <div><span>GPU kernel</span><strong>${formatNumber(metrics.gpu_kernel_time_ms)} ms</strong></div>
+    <div><span>GPU total</span><strong>${formatNumber(metrics.gpu_total_time_ms)} ms</strong></div>
+    <div><span>Kernel speedup</span><strong>${formatNumber(metrics.kernel_speedup)}x</strong></div>
+  </div>
+`;
+
 const labelVersion = (version) => ({
   cuda_naive_global_memory: "Naive",
   cuda_shared_memory_tiled: "Shared memory",
@@ -210,6 +221,7 @@ function renderSamples(samples) {
     <article class="sample-card">
       <h3>${sample.name}</h3>
       <p class="sample-note">${descriptions[sample.name] || "Filtered convolution output."}</p>
+      ${sampleMetricTable(sample.metrics)}
       <div class="sample-images">
         <div>
           <p>Original</p>

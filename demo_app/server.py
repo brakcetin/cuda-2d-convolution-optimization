@@ -295,13 +295,69 @@ def ensure_fallback_previews():
         Image.open(source).convert("L").save(destination, format="PNG")
 
     pairs = [
-        ("building", repo_path("data", "real_images", "building.png"), repo_path("results", "building_sobel.pgm")),
-        ("portrait_gaussian", repo_path("data", "real_images", "portrait.jpg"), repo_path("results", "portrait_gaussian.pgm")),
-        ("portrait_sharpen", repo_path("data", "real_images", "portrait.jpg"), repo_path("results", "portrait_sharpen.pgm")),
-        ("texture", repo_path("data", "real_images", "texture.png"), repo_path("results", "texture_sobel.pgm")),
+        (
+            "building",
+            repo_path("data", "real_images", "building.png"),
+            repo_path("results", "building_sobel.pgm"),
+            {
+                "dimensions": "1024x808",
+                "filter": "sobel 3x3",
+                "version": "cuda_shared_constant_filter",
+                "cpu_time_ms": 14.4491,
+                "gpu_kernel_time_ms": 0.212896,
+                "gpu_total_time_ms": 1457.27,
+                "kernel_speedup": 67.8693,
+                "passed": True,
+            },
+        ),
+        (
+            "portrait_gaussian",
+            repo_path("data", "real_images", "portrait.jpg"),
+            repo_path("results", "portrait_gaussian.pgm"),
+            {
+                "dimensions": "1024x683",
+                "filter": "gaussian 11x11",
+                "version": "cuda_separable",
+                "cpu_time_ms": 21.3990,
+                "gpu_kernel_time_ms": 0.288352,
+                "gpu_total_time_ms": 1853.0,
+                "kernel_speedup": 74.2114,
+                "passed": True,
+            },
+        ),
+        (
+            "portrait_sharpen",
+            repo_path("data", "real_images", "portrait.jpg"),
+            repo_path("results", "portrait_sharpen.pgm"),
+            {
+                "dimensions": "1024x683",
+                "filter": "sharpen 3x3",
+                "version": "cuda_shared_constant_filter",
+                "cpu_time_ms": 14.5537,
+                "gpu_kernel_time_ms": 0.164608,
+                "gpu_total_time_ms": 1943.04,
+                "kernel_speedup": 88.4143,
+                "passed": True,
+            },
+        ),
+        (
+            "texture",
+            repo_path("data", "real_images", "texture.png"),
+            repo_path("results", "texture_sobel.pgm"),
+            {
+                "dimensions": "768x1024",
+                "filter": "sobel 3x3",
+                "version": "cuda_shared_constant_filter",
+                "cpu_time_ms": 12.2333,
+                "gpu_kernel_time_ms": 0.210944,
+                "gpu_total_time_ms": 1351.14,
+                "kernel_speedup": 57.9931,
+                "passed": True,
+            },
+        ),
     ]
     items = []
-    for name, original, output in pairs:
+    for name, original, output, metrics in pairs:
         original_png = FALLBACK_DIR / f"{name}_original.png"
         output_png = FALLBACK_DIR / f"{name}_output.png"
         refresh_preview(original, original_png)
@@ -311,6 +367,7 @@ def ensure_fallback_previews():
                 "name": name.replace("_", " ").title(),
                 "original_url": f"/generated/{original_png.name}",
                 "output_url": f"/generated/{output_png.name}",
+                "metrics": metrics,
             })
     return items
 

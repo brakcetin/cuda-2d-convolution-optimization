@@ -230,6 +230,33 @@ main {
   font-size: 13px;
 }
 
+.sample-metrics {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 12px;
+}
+
+.sample-metrics div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #12161f;
+  padding: 8px;
+}
+
+.sample-metrics span {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.sample-metrics strong {
+  display: block;
+  color: var(--text);
+  font-size: 13px;
+  margin-top: 3px;
+}
+
 table {
   border-collapse: collapse;
   width: 100%;
@@ -515,5 +542,9 @@ summary {
   .sample-grid,
   .paired-images {
     grid-template-columns: 1fr;
+  }
+
+  .sample-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
