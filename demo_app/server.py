@@ -287,6 +287,13 @@ def run_cuda_demo(input_pgm, output_pgm, filter_type, filter_size, version, bloc
 
 
 def ensure_fallback_previews():
+    def refresh_preview(source, destination):
+        if not source.exists():
+            return
+        if destination.exists() and destination.stat().st_mtime >= source.stat().st_mtime:
+            return
+        Image.open(source).convert("L").save(destination, format="PNG")
+
     pairs = [
         ("building", repo_path("data", "real_images", "building.png"), repo_path("results", "building_sobel.pgm")),
         ("portrait_gaussian", repo_path("data", "real_images", "portrait.jpg"), repo_path("results", "portrait_gaussian.pgm")),
@@ -297,10 +304,8 @@ def ensure_fallback_previews():
     for name, original, output in pairs:
         original_png = FALLBACK_DIR / f"{name}_original.png"
         output_png = FALLBACK_DIR / f"{name}_output.png"
-        if original.exists():
-            Image.open(original).convert("L").save(original_png, format="PNG")
-        if output.exists():
-            Image.open(output).convert("L").save(output_png, format="PNG")
+        refresh_preview(original, original_png)
+        refresh_preview(output, output_png)
         if original_png.exists() and output_png.exists():
             items.append({
                 "name": name.replace("_", " ").title(),

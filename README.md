@@ -374,6 +374,7 @@ Use these steps when you want to show the project during the presentation. Run a
    - `Kernel time`: CUDA compute time only.
    - `Total GPU time`: allocation, host-to-device copy, kernel, device-to-host copy, and free time.
    - For small images, CPU time can be lower than total GPU time because GPU setup and memory-transfer overhead dominate. Kernel time is usually the clearest view of raw GPU compute speed.
+   - In filter-type plots, missing or broken `cuda_separable` points for `sobel` and `sharpen` mean "not applicable", not failed or zero speedup. Separable convolution is only used for box and Gaussian filters in this project.
 
 10. Stop the dashboard after the presentation:
 

@@ -63,6 +63,9 @@ function setMode(mode) {
   });
   document.getElementById("dashboardMode").classList.toggle("active", mode === "dashboard");
   document.getElementById("liveMode").classList.toggle("active", mode === "live");
+  if (mode === "live") {
+    loadSamples();
+  }
 }
 
 function renderStatusPills(gpus) {
@@ -255,17 +258,29 @@ function renderLiveResult(result) {
 }
 
 async function loadDashboard() {
-  const [summaryResponse, plotResponse, sampleResponse] = await Promise.all([
+  const [summaryResponse, plotResponse] = await Promise.all([
     fetch("/api/summary"),
     fetch("/api/plots"),
-    fetch("/api/sample-demo"),
   ]);
   state.summary = await summaryResponse.json();
   state.plots = (await plotResponse.json()).plots || [];
-  state.samples = (await sampleResponse.json()).samples || [];
   renderSummary(state.summary);
   renderPlots(state.plots);
-  renderSamples(state.samples);
+}
+
+async function loadSamples() {
+  if (state.samples.length) {
+    return;
+  }
+  const grid = document.getElementById("sampleGrid");
+  grid.innerHTML = "<p>Loading fallback sample outputs...</p>";
+  try {
+    const sampleResponse = await fetch("/api/sample-demo");
+    state.samples = (await sampleResponse.json()).samples || [];
+    renderSamples(state.samples);
+  } catch (error) {
+    grid.innerHTML = `<p>${error.message}</p>`;
+  }
 }
 
 function setupLiveForm() {

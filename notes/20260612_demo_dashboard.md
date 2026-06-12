@@ -247,3 +247,21 @@ python .\scripts\plot_results.py --input results\timing_results.csv --compare-in
 python .\scripts\plot_results.py --input results\timing_results_rtx4070.csv --compare-input results\timing_results.csv --output-dir results\plots_rtx4070
 python .\scripts\plot_real_image_panel.py --output results\plots\real_image_demo_panel.png
 ```
+
+## Separable Filter Plot Fix And Loading Improvement
+
+The speedup-by-filter-type plot previously showed `cuda_separable` dropping to zero for `sharpen` and `sobel`. This was not a CUDA correctness error. The benchmark intentionally skips separable convolution for sharpen and Sobel because those filters are treated as direct 2D filters in this project.
+
+The issue was in plotting: missing points were drawn as `0.0`. The plot script now uses `NaN` for missing/applicability gaps, so the line stops instead of falsely dropping to zero.
+
+Interpretation for presentation:
+
+- A missing `cuda_separable` point for Sobel or sharpen means "not applicable".
+- It does not mean the GPU kernel failed or that speedup is zero.
+- Correctness remains validated by the CSV pass/fail rows and CPU-vs-CUDA error metrics.
+
+Dashboard loading was also improved:
+
+- fallback real-image previews are regenerated only if the source image/output changed
+- `/api/sample-demo` is loaded only when Live Image Demo Mode is opened
+- Dashboard Mode loads benchmark summaries and plots first
