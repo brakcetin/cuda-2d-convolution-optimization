@@ -348,7 +348,7 @@ function setupLiveForm() {
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
     message.className = "message";
-    message.textContent = "Running CUDA executable...";
+    message.textContent = "Running CPU reference and selected CUDA executable...";
 
     const formData = new FormData(form);
     try {
@@ -361,7 +361,7 @@ function setupLiveForm() {
         throw new Error(result.error || "Live demo failed.");
       }
       message.className = "message ok";
-      message.textContent = "CUDA demo completed successfully.";
+      message.textContent = "CPU reference and CUDA demo completed successfully.";
       renderLiveResult(result);
     } catch (error) {
       message.className = "message error";

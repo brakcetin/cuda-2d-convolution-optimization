@@ -287,3 +287,14 @@ The wording was clarified:
 - Sobel can be implemented separably in theory, for example as a smoothing vector times a derivative vector, but that requires a Sobel-specific two-vector separable path. This project deliberately keeps Sobel in the direct-convolution group to compare naive/shared/shared+constant/register/multi-output kernels.
 - The canonical sharpen kernel used here is not a single rank-1 separable filter, so it is treated as direct convolution.
 - Therefore missing `cuda_separable` points for Sobel/sharpen mean "not included in this implementation path", not "GPU failed".
+
+## CPU Reference In Live Demo
+
+The live demo wording was updated because the UI looked like it only ran on the GPU. In reality, every live demo run already does both:
+
+1. Run the single-threaded CPU reference convolution.
+2. Run the selected CUDA version.
+3. Compare CUDA output against CPU output.
+4. Report CPU time, CUDA kernel time, total GPU time, speedup, and correctness.
+
+The button now says `Run CPU + CUDA Demo`, and the panel title explains that the CPU reference runs first. A separate CPU-only dropdown is not needed for the presentation because CPU is already used as the correctness oracle and timing baseline in every live demo run.

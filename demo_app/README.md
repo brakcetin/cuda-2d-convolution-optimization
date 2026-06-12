@@ -9,6 +9,8 @@ This local web app provides a presentation-safe dashboard and a live image convo
 
 The dashboard is the safe presentation fallback. The live demo depends on the CUDA executable and local GPU runtime.
 
+The live demo is not GPU-only. Each run computes the single-threaded CPU reference first, then runs the selected CUDA version, compares CUDA output against CPU output, and reports both CPU and CUDA timings. A separate CPU-only dropdown is intentionally not needed for the presentation workflow.
+
 ## Setup
 
 Run from the repository root in Windows PowerShell:

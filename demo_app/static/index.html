@@ -120,10 +120,10 @@
         <section class="panel live-panel">
           <div class="section-head">
             <div>
-              <h2>Run CUDA On An Uploaded Image</h2>
+              <h2>Run CPU Reference And CUDA On An Uploaded Image</h2>
               <p>
-                The backend converts the uploaded image to grayscale PGM, runs the CUDA executable, and
-                displays the filtered output with timing and correctness metrics.
+                The backend converts the uploaded image to grayscale PGM, runs the single-threaded CPU
+                reference first, then runs the selected CUDA version and compares CUDA output against CPU.
               </p>
             </div>
           </div>
@@ -180,11 +180,11 @@
 
             <div class="selection-guide" id="selectionGuide"></div>
 
-            <button class="run-button" type="submit">Run CUDA Demo</button>
+            <button class="run-button" type="submit">Run CPU + CUDA Demo</button>
           </form>
 
           <div class="message" id="liveMessage">
-            Ready. Upload an image and run a CUDA convolution demo.
+            Ready. Upload an image and run CPU reference plus the selected CUDA convolution version.
           </div>
         </section>
 

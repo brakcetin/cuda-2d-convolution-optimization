@@ -347,7 +347,7 @@ Use these steps when you want to show the project during the presentation. Run a
 
    - Upload `data\real_images\building.png`.
    - Select `sobel`, filter size `3`, version `cuda_shared_constant_filter`, block size `16x16`.
-   - Click **Run CUDA Demo**.
+   - Click **Run CPU + CUDA Demo**.
    - Show the original image, filtered output image, timing metrics, and correctness result.
    - Expected output: edges and facade texture become visible while flat regions become gray or less recognizable. This is correct for Sobel because it highlights intensity changes instead of preserving the full photograph.
 
@@ -358,6 +358,8 @@ Use these steps when you want to show the project during the presentation. Run a
    - Expected output: the portrait becomes smoother and blurrier because Gaussian convolution suppresses high-frequency detail.
 
    The visual output is the filtered convolution result, not a copy of the input. Correctness is judged by comparing the CUDA result with the CPU reference using max/mean absolute error.
+
+   There is no separate CPU-only selector in the live UI because every live CUDA run already executes the single-threaded CPU reference first. The selected CUDA version is then run, timed, and compared against that CPU output. The UI shows both `CPU time` and CUDA timing metrics.
 
    The Live Demo UI hides combinations that are outside the implemented separable path. `cuda_separable` is shown only for `box` and `gaussian`. Sobel is benchmarked as a direct 2D filter in this project even though a separate derivative-plus-smoothing Sobel implementation could be written; sharpen is not a single rank-1 separable filter in its canonical 3x3 form.
 
