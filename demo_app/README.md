@@ -99,11 +99,20 @@ python server.py
 Recommended presentation cases:
 
 ```text
-building.png  -> sobel, 3x3, cuda_shared_constant_filter, 16x16
-portrait.jpg  -> gaussian, 11x11, cuda_separable, 32x8
-portrait.jpg  -> sharpen, 3x3, cuda_shared_constant_filter, 16x16
-texture.png   -> sobel, 3x3, cuda_shared_constant_filter, 16x16
+data\real_images\building.png  -> sobel, 3x3, cuda_shared_constant_filter, 16x16
+data\real_images\portrait.jpg  -> gaussian, 11x11, cuda_separable, 32x8
+data\real_images\portrait.jpg  -> sharpen, 3x3, cuda_shared_constant_filter, 16x16
+data\real_images\texture.png   -> sobel, 3x3, cuda_shared_constant_filter, 16x16
 ```
+
+Expected visual meaning:
+
+- **Sobel / building:** the output should emphasize building edges and facade texture. Flat sky or wall regions may become gray and less recognizable because Sobel highlights intensity changes, not full image brightness.
+- **Gaussian / portrait:** the output should look like a blurred portrait. This is expected because Gaussian convolution smooths high-frequency detail.
+- **Sharpen / portrait:** the output should increase local contrast. With normalized demo output it can look darker or different from the original, but the facial structure should remain visible.
+- **Sobel / texture:** the output should look relief-like because strong wood-grain transitions become edge structures.
+
+The output image is not expected to be identical to the input image. Correctness is judged numerically against the CPU reference using max/mean absolute error; the visual output shows what the selected filter does.
 
 The live demo runs the executable like this:
 

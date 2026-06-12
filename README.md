@@ -346,11 +346,15 @@ Use these steps when you want to show the project during the presentation. Run a
    - Select `sobel`, filter size `3`, version `cuda_shared_constant_filter`, block size `16x16`.
    - Click **Run CUDA Demo**.
    - Show the original image, filtered output image, timing metrics, and correctness result.
+   - Expected output: edges and facade texture become visible while flat regions become gray or less recognizable. This is correct for Sobel because it highlights intensity changes instead of preserving the full photograph.
 
    A second good demo is:
 
    - Upload `data\real_images\portrait.jpg`.
    - Select `gaussian`, filter size `11`, version `cuda_separable`, block size `32x8`.
+   - Expected output: the portrait becomes smoother and blurrier because Gaussian convolution suppresses high-frequency detail.
+
+   The visual output is the filtered convolution result, not a copy of the input. Correctness is judged by comparing the CUDA result with the CPU reference using max/mean absolute error.
 
 10. Stop the dashboard after the presentation:
 

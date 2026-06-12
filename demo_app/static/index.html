@@ -60,24 +60,10 @@
           <div class="section-head">
             <div>
               <h2>Direct Kernel Comparison</h2>
-              <p>GTX 1650, 4096x4096, 11x11 Sobel-like, 32x16 block.</p>
+              <p>GTX 1650 and RTX 4070 side-by-side for the same 4096x4096, 11x11 Sobel-like, 32x16 direct-convolution case.</p>
             </div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Version</th>
-                  <th>CPU ms</th>
-                  <th>Kernel ms</th>
-                  <th>Total ms</th>
-                  <th>Kernel speedup</th>
-                  <th>Passed</th>
-                </tr>
-              </thead>
-              <tbody id="versionTable"></tbody>
-            </table>
-          </div>
+          <div class="comparison-grid" id="directComparisonTables"></div>
         </section>
 
         <section class="panel">
@@ -92,6 +78,28 @@
       </section>
 
       <section id="liveMode" class="mode">
+        <section class="panel explanation">
+          <h2>Live Demo Expectations</h2>
+          <div class="explain-grid">
+            <div>
+              <h3>What to upload</h3>
+              <p>Use `data\real_images\building.png` for Sobel, `data\real_images\portrait.jpg` for Gaussian or sharpen, or `data\real_images\texture.png` for Sobel texture edges.</p>
+            </div>
+            <div>
+              <h3>What output means</h3>
+              <p>The output is the filtered convolution result, not a copy of the original. Sobel emphasizes edges; Gaussian blurs; sharpen increases local contrast.</p>
+            </div>
+            <div>
+              <h3>Why it can look different</h3>
+              <p>Edge filters produce gray/relief-like images because they show intensity changes. The building may look less visible because Sobel suppresses flat regions.</p>
+            </div>
+            <div>
+              <h3>What metrics mean</h3>
+              <p>Timing depends mainly on dimensions, filter size, CUDA version, block size, GPU model, and memory transfer overhead.</p>
+            </div>
+          </div>
+        </section>
+
         <section class="panel live-panel">
           <div class="section-head">
             <div>

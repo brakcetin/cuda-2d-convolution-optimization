@@ -56,20 +56,11 @@ function bestDetail(best) {
   return `${labelVersion(version)} | ${width}x${width} | ${filter} ${type} | ${block}`;
 }
 
-function renderSummary(summary) {
-  const [gtx, rtx] = summary.gpus;
-  document.getElementById("methodNote").textContent = summary.method_note;
-  renderStatusPills(summary.gpus);
-  document.getElementById("summaryCards").innerHTML = [
-    card("GTX correctness", `${gtx.failed_rows} failed`, `${gtx.timing_rows} timing rows`),
-    card("RTX correctness", `${rtx.failed_rows} failed`, `${rtx.timing_rows} timing rows`),
-    card("GTX best kernel", `${formatNumber(gtx.best_kernel?.best_kernel_speedup)}x`, bestDetail(gtx.best_kernel)),
-    card("GTX best total", `${formatNumber(gtx.best_total?.best_total_speedup)}x`, bestDetail(gtx.best_total)),
-    card("RTX best kernel", `${formatNumber(rtx.best_kernel?.best_kernel_speedup)}x`, bestDetail(rtx.best_kernel)),
-    card("RTX best total", `${formatNumber(rtx.best_total?.best_total_speedup)}x`, bestDetail(rtx.best_total)),
-  ].join("");
-
-  document.getElementById("versionTable").innerHTML = summary.version_comparison.map((row) => `
+function renderDirectRows(rows) {
+  if (!rows || !rows.length) {
+    return `<tr><td colspan="6">No direct-comparison rows found.</td></tr>`;
+  }
+  return rows.map((row) => `
     <tr>
       <td>${labelVersion(row.version)}</td>
       <td>${formatNumber(row.cpu_time_ms)}</td>
@@ -79,6 +70,50 @@ function renderSummary(summary) {
       <td>${row.passed === "true" ? "pass" : "fail"}</td>
     </tr>
   `).join("");
+}
+
+function renderDirectComparisons(comparisons) {
+  const container = document.getElementById("directComparisonTables");
+  const entries = comparisons && comparisons.length
+    ? comparisons
+    : [{ label: "GTX 1650", case: "4096x4096, 11x11 Sobel-like, 32x16 block", rows: state.summary?.version_comparison || [] }];
+
+  container.innerHTML = entries.map((comparison) => `
+    <article class="comparison-card">
+      <h3>${comparison.label}</h3>
+      <p>${comparison.case}</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Version</th>
+              <th>CPU ms</th>
+              <th>Kernel ms</th>
+              <th>Total ms</th>
+              <th>Kernel speedup</th>
+              <th>Passed</th>
+            </tr>
+          </thead>
+          <tbody>${renderDirectRows(comparison.rows)}</tbody>
+        </table>
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderSummary(summary) {
+  const [gtx, rtx] = summary.gpus;
+  document.getElementById("methodNote").textContent = summary.method_note;
+  renderStatusPills(summary.gpus);
+  document.getElementById("summaryCards").innerHTML = [
+    card("GTX 1650 correctness", `${gtx.failed_rows} failed`, `${gtx.timing_rows} timing rows`),
+    card("RTX 4070 correctness", `${rtx.failed_rows} failed`, `${rtx.timing_rows} timing rows`),
+    card("GTX 1650 best kernel", `${formatNumber(gtx.best_kernel?.best_kernel_speedup)}x`, bestDetail(gtx.best_kernel)),
+    card("GTX 1650 best total", `${formatNumber(gtx.best_total?.best_total_speedup)}x`, bestDetail(gtx.best_total)),
+    card("RTX 4070 best kernel", `${formatNumber(rtx.best_kernel?.best_kernel_speedup)}x`, bestDetail(rtx.best_kernel)),
+    card("RTX 4070 best total", `${formatNumber(rtx.best_total?.best_total_speedup)}x`, bestDetail(rtx.best_total)),
+  ].join("");
+  renderDirectComparisons(summary.direct_comparisons);
 }
 
 function renderPlots(plots) {
@@ -97,9 +132,16 @@ function renderSamples(samples) {
     grid.innerHTML = "<p>No fallback samples found.</p>";
     return;
   }
+  const descriptions = {
+    Building: "Sobel edge output. The goal is to expose building edges and texture, not preserve the full photo brightness.",
+    "Portrait Gaussian": "Gaussian blur output. The face should remain recognizable but smoother and less detailed.",
+    "Portrait Sharpen": "Sharpen output. Local contrast increases; depending on normalization it may look darker than the original.",
+    Texture: "Sobel edge output. Strong wood-grain transitions become relief-like edge structures.",
+  };
   grid.innerHTML = samples.map((sample) => `
     <article class="sample-card">
       <h3>${sample.name}</h3>
+      <p class="sample-note">${descriptions[sample.name] || "Filtered convolution output."}</p>
       <div class="sample-images">
         <div>
           <p>Original</p>

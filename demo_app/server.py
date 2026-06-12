@@ -115,8 +115,8 @@ def summarize_gpu(label, timing_path, summary_path):
     }
 
 
-def version_comparison_rows():
-    rows = read_csv(repo_path("results", "timing_results.csv"))
+def version_comparison_rows(timing_path):
+    rows = read_csv(timing_path)
     selected = [
         row for row in rows
         if row.get("image_width") == "4096"
@@ -133,6 +133,17 @@ def version_comparison_rows():
         }
     ]
     return sorted(selected, key=lambda row: row.get("version", ""))
+
+
+def direct_comparison(label, timing_path):
+    rows = version_comparison_rows(timing_path)
+    device_name = rows[0].get("device_name", label) if rows else label
+    return {
+        "label": label,
+        "device_name": device_name,
+        "case": "4096x4096, 11x11 Sobel-like, 32x16 block",
+        "rows": rows,
+    }
 
 
 def plot_entries():
@@ -307,7 +318,11 @@ def api_summary():
     )
     return jsonify({
         "gpus": [gtx, rtx],
-        "version_comparison": version_comparison_rows(),
+        "version_comparison": version_comparison_rows(repo_path("results", "timing_results.csv")),
+        "direct_comparisons": [
+            direct_comparison("GTX 1650", repo_path("results", "timing_results.csv")),
+            direct_comparison("RTX 4070", repo_path("results", "timing_results_rtx4070.csv")),
+        ],
         "method_note": (
             "Uploaded image dimensions determine most of the convolution workload. "
             "Timing depends mainly on image size, filter size, CUDA version, block size, "

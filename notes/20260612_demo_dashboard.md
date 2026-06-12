@@ -158,3 +158,27 @@ http://127.0.0.1:5001
 ```
 
 If Chrome still shows the same network-buffer error, close extra Chrome tabs or use Edge/incognito mode. This error is normally browser/Windows local networking state, not a CUDA or Flask application failure.
+
+## Dashboard Label And Live Demo Interpretation Update
+
+The dashboard was refined after reviewing screenshots from the running UI:
+
+- Direct Kernel Comparison now shows GTX 1650 and RTX 4070 side by side for the same case: `4096x4096`, `11x11`, Sobel-like, `32x16`.
+- Summary cards now write the full GPU names: `GTX 1650 best kernel`, `GTX 1650 best total`, `RTX 4070 best kernel`, and `RTX 4070 best total`.
+- Live Demo Mode now includes an explanation panel describing which file to upload, what output is expected, and why filtered images can look different from the original.
+
+Important interpretation:
+
+- Sobel output is not expected to look like the original photo. It emphasizes intensity changes and edges, so flat regions can disappear or become gray.
+- Gaussian output is expected to be blurred.
+- Sharpen output is expected to increase local contrast and may look darker after demo normalization.
+- Texture Sobel output can look like a relief map because it highlights grain transitions.
+- Numerical correctness still comes from CPU-vs-CUDA max/mean absolute error, not from whether the filtered image looks visually identical to the input.
+
+Recommended live demo file paths:
+
+```text
+data\real_images\building.png
+data\real_images\portrait.jpg
+data\real_images\texture.png
+```
