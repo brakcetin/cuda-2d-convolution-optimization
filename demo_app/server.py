@@ -277,6 +277,11 @@ def parse_demo_stdout(stdout):
     return metrics
 
 
+def demo_normalize_output(filter_type):
+    # Edge filters benefit from normalization, but sharpen should preserve image tones.
+    return "false" if filter_type == "sharpen" else "true"
+
+
 def run_cuda_demo(input_pgm, output_pgm, filter_type, filter_size, version, block_size):
     executable = find_executable()
     if executable is None:
@@ -292,7 +297,7 @@ def run_cuda_demo(input_pgm, output_pgm, filter_type, filter_size, version, bloc
         "--demo-filter-size", str(filter_size),
         "--demo-version", version,
         "--demo-block-size", block_size,
-        "--demo-normalize-output", "true",
+        "--demo-normalize-output", demo_normalize_output(filter_type),
         "--demo-warmups", str(DEMO_WARMUP_RUNS),
         "--demo-repeats", str(DEMO_TIMED_REPEATS),
     ]

@@ -5,7 +5,7 @@ param(
     [int]$FilterSize = 3,
     [string]$Version = "cuda_shared_constant_filter",
     [string]$BlockSize = "16x16",
-    [string]$NormalizeOutput = "true"
+    [string]$NormalizeOutput = ""
 )
 
 Set-StrictMode -Version Latest
@@ -27,6 +27,10 @@ if (-not $Executable) {
 }
 
 New-Item -ItemType Directory -Force -Path (Split-Path $OutputPath) | Out-Null
+
+if ([string]::IsNullOrWhiteSpace($NormalizeOutput)) {
+    $NormalizeOutput = if ($FilterType.ToLowerInvariant() -eq "sharpen") { "false" } else { "true" }
+}
 
 & $Executable `
     --demo-input $InputPath `

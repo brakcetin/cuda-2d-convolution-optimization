@@ -214,7 +214,7 @@ function renderSamples(samples) {
   const descriptions = {
     Building: "Sobel edge output. The goal is to expose building edges and texture, not preserve the full photo brightness.",
     "Portrait Gaussian": "Gaussian blur output. The face should remain recognizable but smoother and less detailed.",
-    "Portrait Sharpen": "Sharpen output. Local contrast increases; depending on normalization it may look darker than the original.",
+    "Portrait Sharpen": "Sharpen output. Local contrast increases while preserving the original image tones.",
     Texture: "Sobel edge output. Strong wood-grain transitions become relief-like edge structures.",
   };
   grid.innerHTML = samples.map((sample) => `
