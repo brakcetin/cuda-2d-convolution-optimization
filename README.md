@@ -12,6 +12,61 @@ The project studies how a sequential 2D grayscale image convolution baseline com
 
 The implementation starts with the standard CUDA baseline: one CUDA thread computes one output pixel. It then adds memory-hierarchy-aware and algorithmic optimizations so the final report can compare how each design changes performance.
 
+## Visual Preview
+
+The repository includes a local dashboard for presenting the committed benchmark matrix and running the CUDA executable on an uploaded image.
+
+![Dashboard summary](data/readme-images/dashboard-summary.png)
+
+![Live demo controls](data/readme-images/live-demo-controls.png)
+
+![Live demo result](data/readme-images/live-demo-result.png)
+
+The qualitative real-image panel used in the report is generated from committed PGM inputs and outputs:
+
+![Real image demo panel](results/plots/real_image_demo_panel_final.png)
+
+## GTX 1650 vs RTX 4070 Plots
+
+Speedups are relative to each machine's own CPU baseline, so the paired plots are best read as within-machine version behavior. Raw kernel time and GFLOP/s comparisons are the fairest direct hardware comparison.
+
+| GTX 1650 Max-Q | RTX 4070 Laptop |
+| --- | --- |
+| ![GTX speedup by version](results/plots/speedup_by_version.png) | ![RTX speedup by version](results/plots_rtx4070/speedup_by_version.png) |
+| ![GTX CPU vs CUDA time](results/plots/time_by_image_size_3x3.png) | ![RTX CPU vs CUDA time](results/plots_rtx4070/time_by_image_size_3x3.png) |
+| ![GTX block-size speedup](results/plots/speedup_by_block_size_1024_7x7_box.png) | ![RTX block-size speedup](results/plots_rtx4070/speedup_by_block_size_1024_7x7_box.png) |
+
+## Quick Start
+
+On Windows PowerShell from the repository root:
+
+```powershell
+.\scripts\check_environment.ps1
+.\scripts\configure_release.ps1
+.\scripts\build_release.ps1
+```
+
+Run the official benchmark matrix:
+
+```powershell
+.\scripts\run_benchmarks.ps1 -ImageSizes "512,1024,2048,4096" -FilterSizes "3,5,7,11" -FilterTypes "box,gaussian,sharpen,sobel" -BlockSizes "8x8,16x16,32x8,32x16" -Repeats 5 -Warmups 1 -Versions "all"
+```
+
+Run the local dashboard:
+
+```powershell
+python -m pip install -r demo_app\requirements.txt
+.\scripts\run_demo_dashboard.ps1
+```
+
+Open:
+
+```text
+http://127.0.0.1:5000
+```
+
+The live demo converts uploaded images to grayscale PGM, runs the single-threaded CPU reference 5 times, warms the CUDA context before timing, then runs the selected CUDA kernel with 1 warmup and 5 timed launches.
+
 ## Implemented Versions
 
 - `cpu_sequential`: single-threaded CPU reference implementation.
@@ -22,11 +77,12 @@ The implementation starts with the standard CUDA baseline: one CUDA thread compu
 - `cuda_register_tiled`: direct global-memory 2x1 register-tiled convolution with two per-thread accumulators.
 - `cuda_separable`: horizontal and vertical 1D passes for generated separable box and Gaussian-like filters.
 
-Final polish items:
+Current status:
 
-- Convert the Markdown report into the final PDF submission.
-- Prepare the 10-minute presentation from the outline and committed plots.
-- Use the committed RTX 4070 results as secondary hardware comparison evidence.
+- Official GTX 1650 and secondary RTX 4070 benchmark matrices are committed.
+- All CUDA correctness checks in the committed timing CSVs pass.
+- Report-ready plots and real-image demo outputs are committed under `results/`.
+- The demo dashboard can run from committed CSV/plot files and can also execute the CUDA binary live on uploaded images.
 
 ## Technologies Used
 
@@ -66,6 +122,7 @@ cuda-2d-convolution-optimization/
 |   `-- tool_paths.ps1
 |-- data/
 |   |-- sample_input.pgm
+|   |-- readme-images/
 |   `-- real_images/
 |       |-- building.png / building_1024.pgm
 |       |-- portrait.jpg / portrait_1024.pgm
@@ -82,11 +139,15 @@ cuda-2d-convolution-optimization/
 |   |-- portrait_sharpen.pgm
 |   |-- texture_sobel.pgm
 |   |-- profiling/
-|   `-- plots/
+|   |-- plots/
+|   `-- plots_rtx4070/
 |-- demo_app/
 |   |-- server.py
 |   |-- README.md
 |   |-- requirements.txt
+|   |-- sample_results/
+|   |-- uploads/          (generated locally)
+|   |-- outputs/          (generated locally)
 |   `-- static/
 |-- docs/
 |   |-- FinalReport.md
@@ -235,7 +296,7 @@ Use this pipeline after pulling the repository on any CUDA-capable machine.
 
    ```powershell
    .\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\building_1024.pgm" -OutputPath "results\building_sobel.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
-   .\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\portrait_1024.pgm" -OutputPath "results\portrait_gaussian.pgm" -FilterType "gaussian" -FilterSize 11 -Version "cuda_separable" -BlockSize "32x8"
+   .\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\portrait_1024.pgm" -OutputPath "results\portrait_gaussian.pgm" -FilterType "gaussian" -FilterSize 11 -Version "cuda_separable" -BlockSize "32x8" -NormalizeOutput "false"
    .\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\portrait_1024.pgm" -OutputPath "results\portrait_sharpen.pgm" -FilterType "sharpen" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
    .\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\texture_1024.pgm" -OutputPath "results\texture_sobel.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
    ```
@@ -417,7 +478,7 @@ Real demo examples:
 
 ```powershell
 .\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\building_1024.pgm" -OutputPath "results\building_sobel.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
-.\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\portrait_1024.pgm" -OutputPath "results\portrait_gaussian.pgm" -FilterType "gaussian" -FilterSize 11 -Version "cuda_separable" -BlockSize "32x8"
+.\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\portrait_1024.pgm" -OutputPath "results\portrait_gaussian.pgm" -FilterType "gaussian" -FilterSize 11 -Version "cuda_separable" -BlockSize "32x8" -NormalizeOutput "false"
 .\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\portrait_1024.pgm" -OutputPath "results\portrait_sharpen.pgm" -FilterType "sharpen" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
 .\scripts\run_pgm_demo.ps1 -InputPath "data\real_images\texture_1024.pgm" -OutputPath "results\texture_sobel.pgm" -FilterType "sobel" -FilterSize 3 -Version "cuda_shared_constant_filter" -BlockSize "16x16"
 ```
@@ -442,6 +503,12 @@ Committed real-image demo outputs:
 - `results/portrait_gaussian.pgm`
 - `results/portrait_sharpen.pgm`
 - `results/texture_sobel.pgm`
+
+README/demo screenshots:
+
+- `data/readme-images/dashboard-summary.png`
+- `data/readme-images/live-demo-controls.png`
+- `data/readme-images/live-demo-result.png`
 
 The real-image files are qualitative presentation/demo material. Official speedup claims use the synthetic benchmark CSV files under `results/`. The demo outputs are committed so a teammate can immediately inspect the expected visual results after pulling the repository.
 
@@ -608,6 +675,10 @@ Report-ready plots:
 - `results/plots/speedup_by_filter_type_1024_7x7.png`
 - `results/plots/speedup_by_block_size_1024_7x7_box.png`
 - `results/plots/direct_versions_speedup_1024_7x7_sobel.png`
+- `results/plots/real_image_demo_panel_final.png`
+- `results/plots_rtx4070/speedup_by_version.png`
+- `results/plots_rtx4070/time_by_image_size_3x3.png`
+- `results/plots_rtx4070/speedup_by_block_size_1024_7x7_box.png`
 
 ## Current Implementation Status
 
