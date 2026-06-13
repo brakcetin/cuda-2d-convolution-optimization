@@ -269,6 +269,10 @@ void run_demo(const DemoOptions& options) {
     CudaTiming timing;
     const int warmups = options.warmup_count;
     const int repeats = options.repeat_count;
+    // Initialize the CUDA context before measuring allocation/copy/kernel phases.
+    // Otherwise the first cudaMalloc can include one-time runtime startup cost.
+    CUDA_CHECK(cudaFree(nullptr));
+
     // Like the benchmark, cuda_separable is checked against the separable CPU
     // output while its speedup is still measured against the direct 2D CPU time.
     const std::vector<float>* correctness_reference = &reference;
