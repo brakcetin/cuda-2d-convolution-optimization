@@ -155,11 +155,19 @@ def direct_comparison(label, timing_path):
 def plot_entries():
     grouped = {}
     combined = []
+    hidden_plot_names = {
+        "real_image_demo_panel.png",
+        "real_image_demo_panel_rerun.png",
+        "real_image_demo_panel_updated.png",
+        "sharpen_normalize_compare.png",
+    }
     for label, folder in (("GTX 1650", "plots"), ("RTX 4070", "plots_rtx4070")):
         path = repo_path("results", folder)
         if not path.exists():
             continue
         for image in sorted(path.glob("*.png")):
+            if image.name in hidden_plot_names:
+                continue
             entry = {
                 "filename": image.name,
                 "gpu": label,
